@@ -1,19 +1,31 @@
 # Point of Sale Application - System Architecture
 
-**Version:** 1.0
-**Last Updated:** 2026-01-12
+**Version:** 1.1
+**Last Updated:** 2026-01-13
 **Status:** Design Phase
 
 ## Table of Contents
 - [System Overview](#system-overview)
+  - [Inventory Reconciliation Flow](#inventory-reconciliation-flow)
 - [Architecture Components](#architecture-components)
 - [Technology Stack](#technology-stack-recommendations)
 - [Core Modules](#core-modules)
+  - [Inventory Management Service](#1-inventory-management-service)
+  - [Transaction Service](#2-transaction-service)
+  - [Payment Integration Service](#3-payment-integration-service)
+  - [User & Authentication Service](#4-user--authentication-service)
+  - [Reporting & Analytics Service](#5-reporting--analytics-service)
+  - [Sync & Offline Service](#6-sync--offline-service)
 - [Data Model](#data-model)
+  - [Inventory Count & Reconciliation Tables](#inventory-count-sessions)
 - [Payment Integration](#payment-integration-architecture)
 - [POS Terminal Architecture](#pos-terminal-architecture)
 - [Admin Dashboard](#admin-dashboard-features)
+  - [Inventory Count & Reconciliation Features](#dashboard-structure)
 - [API Endpoints](#api-endpoints)
+  - [Inventory Count Endpoints](#inventory-count-endpoints)
+  - [Inventory Reconciliation Endpoints](#inventory-reconciliation-endpoints)
+  - [Inventory Analysis Endpoints](#inventory-analysis-endpoints)
 - [Security](#security-considerations)
 - [Deployment](#deployment-architecture)
 - [Scalability](#scalability-considerations)
@@ -25,7 +37,17 @@
 
 ## System Overview
 
-A distributed POS system with a central database, multiple client terminals, payment processing integration, and administrative capabilities.
+A distributed POS system with a central database, multiple client terminals, payment processing integration, administrative capabilities, and comprehensive inventory reconciliation system.
+
+**Key System Capabilities:**
+- Multi-terminal POS operations with offline support
+- Real-time inventory tracking and management
+- Integrated payment processing (Square, Stripe, PayPal)
+- Physical inventory counting and reconciliation
+- Variance detection and shrinkage analysis
+- Automated inventory adjustments with approval workflows
+- Comprehensive reporting and analytics
+- Role-based access control and audit trails
 
 ### High-Level Architecture Diagram
 
@@ -69,6 +91,107 @@ A distributed POS system with a central database, multiple client terminals, pay
 │  │    Square    │  │    Stripe    │  │    PayPal    │  │
 │  └──────────────┘  └──────────────┘  └──────────────┘  │
 └─────────────────────────────────────────────────────────┘
+```
+
+### Inventory Reconciliation Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   INVENTORY RECONCILIATION SYSTEM                │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. INITIATE COUNT SESSION                                        │
+│    - Schedule count (full, cycle, spot check)                   │
+│    - Assign counters                                             │
+│    - Set count parameters (blind count option)                   │
+└────────────────────────────┬────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 2. PHYSICAL COUNT EXECUTION                                      │
+│    ┌────────────────┐    ┌────────────────┐                    │
+│    │ Mobile/Tablet  │    │ Desktop App    │                    │
+│    │ Count App      │    │ Count Interface│                    │
+│    │ - Scan barcode │    │ - Manual entry │                    │
+│    │ - Enter count  │    │ - Search items │                    │
+│    └────────────────┘    └────────────────┘                    │
+└────────────────────────────┬────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 3. VARIANCE DETECTION                                            │
+│    System compares:                                              │
+│    - Physical Count vs System Quantity                           │
+│    - Calculate variance (over/under)                             │
+│    - Flag items exceeding threshold (e.g., >5%)                  │
+│    - Calculate cost impact                                       │
+└────────────────────────────┬────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 4. RECOUNT WORKFLOW (if needed)                                  │
+│    - Items with high variance marked for recount                 │
+│    - Different counter performs recount                          │
+│    - Compare recount with original count                         │
+│    - Resolve discrepancies                                       │
+└────────────────────────────┬────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 5. RECONCILIATION CREATION                                       │
+│    Generate reconciliation record:                               │
+│    - Summary of all variances                                    │
+│    - Total cost impact                                           │
+│    - Items requiring adjustment                                  │
+│    - Audit trail                                                 │
+└────────────────────────────┬────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 6. MANAGER REVIEW & APPROVAL                                     │
+│    Manager actions:                                              │
+│    - Review variance report                                      │
+│    - Investigate significant discrepancies                       │
+│    - Approve or reject adjustments                               │
+│    - Add notes and reason codes                                  │
+└────────────────────────────┬────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 7. AUTOMATIC ADJUSTMENT                                          │
+│    If approved:                                                  │
+│    - Create inventory adjustment records                         │
+│    - Update product quantities in database                       │
+│    - Log all changes with reason codes                           │
+│    - Create inventory snapshot                                   │
+└────────────────────────────┬────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 8. POS INTEGRATION                                               │
+│    Reconciliation impacts POS:                                   │
+│    - Real-time inventory updates                                 │
+│    - Accurate stock levels for sales                             │
+│    - Low stock alerts triggered if needed                        │
+│    - COGS calculations updated                                   │
+└────────────────────────────┬────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 9. ANALYTICS & REPORTING                                         │
+│    Generate insights:                                            │
+│    - Variance trends by product/category                         │
+│    - Shrinkage analysis                                          │
+│    - Inventory accuracy metrics                                  │
+│    - High-risk product identification                            │
+│    - Recommended count frequencies                               │
+└─────────────────────────────────────────────────────────────────┘
+
+CONTINUOUS CYCLE:
+┌─────────────────────────────────────────────────────────────────┐
+│ Daily POS Transactions                                           │
+│ ↓                                                                │
+│ Real-time inventory deduction                                    │
+│ ↓                                                                │
+│ Scheduled reconciliation counts                                  │
+│ ↓                                                                │
+│ Variance analysis and adjustment                                 │
+│ ↓                                                                │
+│ Updated inventory accuracy (back to POS)                         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -149,6 +272,11 @@ A distributed POS system with a central database, multiple client terminals, pay
 - Product variants (size, color, etc.)
 - Supplier management
 - Inventory valuation (FIFO, LIFO, weighted average)
+- **Physical inventory counts and tracking**
+- **Inventory reconciliation (system vs physical counts)**
+- **Shrinkage and variance analysis**
+- **Inventory audit trails**
+- **Cost of goods sold (COGS) tracking**
 
 **Key Features:**
 - Bulk import/export via CSV
@@ -156,6 +284,73 @@ A distributed POS system with a central database, multiple client terminals, pay
 - Image management
 - Price history tracking
 - Multi-location inventory support
+- **Physical count interface with mobile support**
+- **Automated reconciliation workflows**
+- **Variance threshold alerts**
+- **Batch reconciliation processing**
+- **Inventory snapshots for historical analysis**
+
+**Reconciliation Process:**
+The inventory reconciliation system ensures accuracy between physical inventory and system records:
+
+1. **Physical Count Initiation:**
+   - Schedule counts (daily, weekly, monthly, annual)
+   - Cycle counting by category or location
+   - Spot checks for high-value items
+   - Full inventory audits
+
+2. **Count Execution:**
+   - Mobile-friendly count interface
+   - Barcode scanning for accuracy
+   - Multiple counter assignment
+   - Blind counts (hide system quantities)
+   - Recount workflows for discrepancies
+
+3. **Reconciliation Analysis:**
+   - Automatic variance calculation
+   - Threshold-based alerts (e.g., >5% variance)
+   - Variance categorization (overage, shortage, damage)
+   - Cost impact analysis
+   - Trend analysis for recurring issues
+
+4. **Adjustment Workflow:**
+   - Manager approval for adjustments
+   - Automatic inventory adjustment creation
+   - Reason code requirements
+   - Multi-level approval for large variances
+   - Audit trail for all adjustments
+
+5. **Integration with POS:**
+   - Real-time inventory deduction on sale
+   - Reserved inventory for pending transactions
+   - Automatic restock on refunds/returns
+   - Transaction-level inventory tracking
+   - Daily reconciliation reports comparing sales to inventory changes
+
+**POS-to-Inventory Data Flow:**
+
+```
+POS Transaction → Inventory Deduction → Reconciliation Check
+     ↓                    ↓                      ↓
+Complete Sale      Update Stock Level    Compare Expected vs Actual
+     ↓                    ↓                      ↓
+Receipt Generated  Log Transaction      Flag Discrepancies
+     ↓                    ↓                      ↓
+Customer Checkout  Create Snapshot      Trigger Count (if threshold met)
+```
+
+**Daily Reconciliation Process:**
+- End-of-day snapshot captures current inventory state
+- Compare beginning inventory + receipts - sales = expected ending inventory
+- Compare expected inventory vs actual system inventory
+- Generate variance report for items with discrepancies
+- Recommend cycle counts for high-variance items
+
+**Automated Triggers:**
+- Inventory variance > threshold → trigger spot check
+- High-value item sold → immediate stock verification
+- Negative stock level → alert manager for investigation
+- Multiple failed counts → flag for audit review
 
 ---
 
@@ -239,6 +434,11 @@ A distributed POS system with a central database, multiple client terminals, pay
 - Tax reports
 - Forecasting and trend analysis
 - Export capabilities (PDF, Excel, CSV)
+- **Inventory reconciliation reports**
+- **Variance and shrinkage analysis**
+- **Inventory accuracy metrics**
+- **Cost of goods sold (COGS) reporting**
+- **Inventory turnover analysis**
 
 **Report Types:**
 - Dashboard summaries
@@ -248,6 +448,22 @@ A distributed POS system with a central database, multiple client terminals, pay
 - Hourly sales patterns
 - Refund and void reports
 - Payment reconciliation reports
+- **Physical inventory count reports**
+- **Variance analysis reports**
+- **Shrinkage reports by category/product**
+- **Inventory accuracy scorecards**
+- **Reconciliation audit trails**
+- **Cost impact analysis**
+- **Inventory health dashboards**
+
+**Reconciliation-Specific Analytics:**
+- Variance trends over time
+- Accuracy rates by counter/category
+- High-risk product identification
+- Seasonal variance patterns
+- Impact of inventory counts on stock accuracy
+- Recommended count frequencies
+- Automated alert generation for threshold breaches
 
 ---
 
@@ -504,23 +720,128 @@ CREATE TABLE inventory_adjustments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID REFERENCES products(id),
     adjustment_type VARCHAR(50) NOT NULL,
-    -- Types: restock, damage, theft, correction, return, shrinkage, transfer
+    -- Types: restock, damage, theft, correction, return, shrinkage, transfer, reconciliation
     quantity_change INTEGER NOT NULL,
     quantity_before INTEGER NOT NULL,
     quantity_after INTEGER NOT NULL,
     reason TEXT,
     reference_number VARCHAR(100), -- PO number, transfer number, etc.
+    reconciliation_id UUID REFERENCES inventory_reconciliations(id),
     adjusted_by UUID REFERENCES users(id),
     approved_by UUID REFERENCES users(id),
     adjustment_date TIMESTAMP DEFAULT NOW(),
     created_at TIMESTAMP DEFAULT NOW(),
 
-    CONSTRAINT valid_adjustment_type CHECK (adjustment_type IN ('restock', 'damage', 'theft', 'correction', 'return', 'shrinkage', 'transfer'))
+    CONSTRAINT valid_adjustment_type CHECK (adjustment_type IN ('restock', 'damage', 'theft', 'correction', 'return', 'shrinkage', 'transfer', 'reconciliation'))
 );
 
 CREATE INDEX idx_inventory_adjustments_product ON inventory_adjustments(product_id);
 CREATE INDEX idx_inventory_adjustments_date ON inventory_adjustments(adjustment_date);
 CREATE INDEX idx_inventory_adjustments_type ON inventory_adjustments(adjustment_type);
+CREATE INDEX idx_inventory_adjustments_reconciliation ON inventory_adjustments(reconciliation_id);
+
+-- Inventory Count Sessions
+CREATE TABLE inventory_count_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_number VARCHAR(50) UNIQUE NOT NULL,
+    count_type VARCHAR(50) NOT NULL,
+    -- Types: full_count, cycle_count, spot_check, category_count
+    status VARCHAR(20) NOT NULL DEFAULT 'in_progress',
+    -- Status: in_progress, completed, cancelled, reconciled
+    category_id UUID REFERENCES categories(id), -- For category-specific counts
+    scheduled_date DATE,
+    started_at TIMESTAMP DEFAULT NOW(),
+    completed_at TIMESTAMP,
+    started_by UUID REFERENCES users(id),
+    notes TEXT,
+    is_blind_count BOOLEAN DEFAULT false, -- Hide system quantities from counters
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT valid_count_type CHECK (count_type IN ('full_count', 'cycle_count', 'spot_check', 'category_count')),
+    CONSTRAINT valid_session_status CHECK (status IN ('in_progress', 'completed', 'cancelled', 'reconciled'))
+);
+
+CREATE INDEX idx_count_sessions_status ON inventory_count_sessions(status);
+CREATE INDEX idx_count_sessions_date ON inventory_count_sessions(scheduled_date);
+CREATE INDEX idx_count_sessions_type ON inventory_count_sessions(count_type);
+
+-- Inventory Counts (Individual product counts within a session)
+CREATE TABLE inventory_counts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    count_session_id UUID REFERENCES inventory_count_sessions(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id),
+    system_quantity INTEGER NOT NULL, -- Quantity per system at time of count
+    counted_quantity INTEGER, -- Physical count
+    variance INTEGER GENERATED ALWAYS AS (counted_quantity - system_quantity) STORED,
+    variance_percentage DECIMAL(5,2), -- Calculated variance percentage
+    variance_cost DECIMAL(10,2), -- Financial impact of variance
+    counted_by UUID REFERENCES users(id),
+    counted_at TIMESTAMP,
+    recount_required BOOLEAN DEFAULT false,
+    recount_quantity INTEGER,
+    recount_by UUID REFERENCES users(id),
+    recount_at TIMESTAMP,
+    notes TEXT,
+    status VARCHAR(20) DEFAULT 'pending',
+    -- Status: pending, counted, verified, discrepancy
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT valid_count_status CHECK (status IN ('pending', 'counted', 'verified', 'discrepancy'))
+);
+
+CREATE INDEX idx_inventory_counts_session ON inventory_counts(count_session_id);
+CREATE INDEX idx_inventory_counts_product ON inventory_counts(product_id);
+CREATE INDEX idx_inventory_counts_status ON inventory_counts(status);
+CREATE INDEX idx_inventory_counts_variance ON inventory_counts(variance);
+
+-- Inventory Reconciliations
+CREATE TABLE inventory_reconciliations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reconciliation_number VARCHAR(50) UNIQUE NOT NULL,
+    count_session_id UUID REFERENCES inventory_count_sessions(id),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    -- Status: pending, approved, rejected, completed
+    total_items_counted INTEGER NOT NULL,
+    items_with_variance INTEGER NOT NULL,
+    total_variance_cost DECIMAL(12,2) NOT NULL,
+    variance_percentage DECIMAL(5,2),
+    reconciliation_date TIMESTAMP DEFAULT NOW(),
+    reviewed_by UUID REFERENCES users(id),
+    reviewed_at TIMESTAMP,
+    approved_by UUID REFERENCES users(id),
+    approved_at TIMESTAMP,
+    rejection_reason TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT valid_reconciliation_status CHECK (status IN ('pending', 'approved', 'rejected', 'completed'))
+);
+
+CREATE INDEX idx_reconciliations_session ON inventory_reconciliations(count_session_id);
+CREATE INDEX idx_reconciliations_status ON inventory_reconciliations(status);
+CREATE INDEX idx_reconciliations_date ON inventory_reconciliations(reconciliation_date);
+
+-- Inventory Snapshots (Historical inventory levels)
+CREATE TABLE inventory_snapshots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID REFERENCES products(id),
+    quantity INTEGER NOT NULL,
+    value DECIMAL(12,2) NOT NULL, -- Total value at snapshot time
+    cost_price DECIMAL(10,2),
+    snapshot_date TIMESTAMP NOT NULL,
+    snapshot_type VARCHAR(50) NOT NULL,
+    -- Types: daily, weekly, monthly, end_of_day, reconciliation
+    reference_id UUID, -- Reference to reconciliation or count session
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT valid_snapshot_type CHECK (snapshot_type IN ('daily', 'weekly', 'monthly', 'end_of_day', 'reconciliation'))
+);
+
+CREATE INDEX idx_inventory_snapshots_product ON inventory_snapshots(product_id);
+CREATE INDEX idx_inventory_snapshots_date ON inventory_snapshots(snapshot_date);
+CREATE INDEX idx_inventory_snapshots_type ON inventory_snapshots(snapshot_type);
 
 -- Price History (for auditing and reporting)
 CREATE TABLE price_history (
@@ -1590,18 +1911,38 @@ admin-dashboard/
 │   │   │   ├── Overview.tsx         # Real-time summary
 │   │   │   ├── SalesWidget.tsx
 │   │   │   ├── TerminalStatus.tsx
-│   │   │   └── AlertsWidget.tsx
+│   │   │   ├── AlertsWidget.tsx
+│   │   │   └── InventoryHealthWidget.tsx
 │   │   ├── Reports/
 │   │   │   ├── SalesReports.tsx
 │   │   │   ├── InventoryReports.tsx
 │   │   │   ├── EmployeeReports.tsx
-│   │   │   └── FinancialReports.tsx
+│   │   │   ├── FinancialReports.tsx
+│   │   │   ├── ReconciliationReports.tsx
+│   │   │   └── VarianceAnalysis.tsx
 │   │   ├── Inventory/
 │   │   │   ├── ProductList.tsx
 │   │   │   ├── ProductEdit.tsx
 │   │   │   ├── Categories.tsx
 │   │   │   ├── StockAdjustments.tsx
-│   │   │   └── BulkImport.tsx
+│   │   │   ├── BulkImport.tsx
+│   │   │   ├── InventoryCounts/
+│   │   │   │   ├── CountSessionList.tsx
+│   │   │   │   ├── CreateCountSession.tsx
+│   │   │   │   ├── CountInterface.tsx
+│   │   │   │   ├── MobileCountInterface.tsx
+│   │   │   │   └── CountSummary.tsx
+│   │   │   ├── Reconciliation/
+│   │   │   │   ├── ReconciliationList.tsx
+│   │   │   │   ├── ReconciliationDetails.tsx
+│   │   │   │   ├── VarianceReview.tsx
+│   │   │   │   ├── ApprovalWorkflow.tsx
+│   │   │   │   └── AdjustmentCreation.tsx
+│   │   │   └── Analytics/
+│   │   │       ├── InventoryValue.tsx
+│   │   │       ├── TurnoverAnalysis.tsx
+│   │   │       ├── ShrinkageReport.tsx
+│   │   │       └── InventorySnapshots.tsx
 │   │   ├── Users/
 │   │   │   ├── UserList.tsx
 │   │   │   ├── UserEdit.tsx
@@ -1618,15 +1959,21 @@ admin-dashboard/
 │   │       ├── GeneralSettings.tsx
 │   │       ├── PaymentSettings.tsx
 │   │       ├── TaxSettings.tsx
-│   │       └── SecuritySettings.tsx
+│   │       ├── SecuritySettings.tsx
+│   │       └── ReconciliationSettings.tsx
 │   └── components/
 │       ├── Charts/
 │       │   ├── SalesChart.tsx
 │       │   ├── InventoryChart.tsx
+│       │   ├── VarianceChart.tsx
 │       │   └── PerformanceChart.tsx
-│       └── Tables/
-│           ├── DataTable.tsx
-│           └── ExportButton.tsx
+│       ├── Tables/
+│       │   ├── DataTable.tsx
+│       │   └── ExportButton.tsx
+│       └── Inventory/
+│           ├── BarcodeScanner.tsx
+│           ├── VarianceIndicator.tsx
+│           └── ReconciliationStatus.tsx
 ```
 
 ### Key Metrics and Analytics
@@ -1711,6 +2058,121 @@ interface IInventoryReport {
         averageMargin: number;
         topMarginProducts: IProductMargin[];
     };
+    reconciliation: {
+        lastReconciliationDate: Date;
+        pendingReconciliations: number;
+        totalVarianceCost: number;
+        shrinkageRate: number;
+    };
+}
+```
+
+#### 4. Reconciliation Reports
+
+```typescript
+interface IReconciliationReport {
+    period: {
+        startDate: Date;
+        endDate: Date;
+    };
+    summary: {
+        totalReconciliations: number;
+        totalItemsCounted: number;
+        itemsWithVariance: number;
+        variancePercentage: number;
+        totalVarianceCost: number;
+        shrinkageCost: number;
+        overageCost: number;
+    };
+    variancesByCategory: {
+        categoryName: string;
+        itemsWithVariance: number;
+        totalVarianceCost: number;
+        variancePercentage: number;
+    }[];
+    topVariances: {
+        productName: string;
+        sku: string;
+        systemQuantity: number;
+        countedQuantity: number;
+        variance: number;
+        varianceCost: number;
+        variancePercentage: number;
+    }[];
+    trends: {
+        date: Date;
+        varianceCount: number;
+        varianceCost: number;
+    }[];
+    reconciliationsByStatus: {
+        status: string;
+        count: number;
+    }[];
+}
+
+interface IVarianceAnalysis {
+    productId: string;
+    productName: string;
+    sku: string;
+    category: string;
+    countHistory: {
+        date: Date;
+        systemQuantity: number;
+        countedQuantity: number;
+        variance: number;
+        varianceCost: number;
+    }[];
+    patterns: {
+        averageVariance: number;
+        maxVariance: number;
+        minVariance: number;
+        varianceFrequency: string; // consistent, occasional, rare
+        potentialCauses: string[]; // theft, damage, counting error, etc.
+    };
+    recommendations: string[];
+}
+
+interface IShrinkageReport {
+    period: {
+        startDate: Date;
+        endDate: Date;
+    };
+    totals: {
+        totalShrinkage: number; // units
+        shrinkageCost: number;
+        shrinkagePercentage: number;
+        affectedProducts: number;
+    };
+    breakdown: {
+        byCategory: {
+            categoryName: string;
+            shrinkage: number;
+            cost: number;
+            percentage: number;
+        }[];
+        byReason: {
+            reason: string; // theft, damage, expiration, counting error
+            count: number;
+            cost: number;
+            percentage: number;
+        }[];
+        byProduct: {
+            productName: string;
+            sku: string;
+            shrinkage: number;
+            cost: number;
+            frequency: number;
+        }[];
+    };
+    trends: {
+        date: Date;
+        shrinkage: number;
+        cost: number;
+    }[];
+    alerts: {
+        highRiskProducts: string[];
+        unusualPatterns: string[];
+    };
 }
 ```
 
@@ -1768,6 +2230,109 @@ Response: { success }
 POST   /api/v1/products/bulk-import
 Request: FormData with CSV file
 Response: { imported, failed, errors[] }
+```
+
+### Inventory Count Endpoints
+
+```
+POST   /api/v1/inventory/count-sessions
+Request: { countType, categoryId?, scheduledDate?, isBlindCount, notes }
+Response: { countSession }
+
+GET    /api/v1/inventory/count-sessions
+Query: ?status=in_progress&startDate=ISO&endDate=ISO
+Response: { sessions[], total }
+
+GET    /api/v1/inventory/count-sessions/:id
+Response: { session, counts[] }
+
+PUT    /api/v1/inventory/count-sessions/:id
+Request: { status, notes }
+Response: { session }
+
+DELETE /api/v1/inventory/count-sessions/:id
+Response: { success }
+
+POST   /api/v1/inventory/count-sessions/:id/complete
+Response: { session }
+
+GET    /api/v1/inventory/count-sessions/:id/counts
+Query: ?status=pending&hasVariance=true
+Response: { counts[], summary }
+
+POST   /api/v1/inventory/counts
+Request: { countSessionId, productId, countedQuantity, notes }
+Response: { count }
+
+PUT    /api/v1/inventory/counts/:id
+Request: { countedQuantity, notes }
+Response: { count }
+
+POST   /api/v1/inventory/counts/:id/recount
+Request: { recountQuantity, notes }
+Response: { count }
+
+POST   /api/v1/inventory/counts/batch
+Request: { countSessionId, counts: [{ productId, countedQuantity }] }
+Response: { processed, failed[] }
+```
+
+### Inventory Reconciliation Endpoints
+
+```
+POST   /api/v1/inventory/reconciliations
+Request: { countSessionId, notes }
+Response: { reconciliation, variances[] }
+
+GET    /api/v1/inventory/reconciliations
+Query: ?status=pending&startDate=ISO&endDate=ISO
+Response: { reconciliations[], total }
+
+GET    /api/v1/inventory/reconciliations/:id
+Response: { reconciliation, variances[], adjustments[] }
+
+POST   /api/v1/inventory/reconciliations/:id/approve
+Request: { notes }
+Response: { reconciliation, adjustments[] }
+
+POST   /api/v1/inventory/reconciliations/:id/reject
+Request: { reason }
+Response: { reconciliation }
+
+GET    /api/v1/inventory/reconciliations/:id/variance-report
+Response: { report, charts, summary }
+
+POST   /api/v1/inventory/reconciliations/:id/adjustments
+Request: { adjustments: [{ productId, quantityChange, reason }] }
+Response: { adjustments[] }
+```
+
+### Inventory Analysis Endpoints
+
+```
+GET    /api/v1/inventory/snapshots
+Query: ?productId=uuid&startDate=ISO&endDate=ISO&type=daily
+Response: { snapshots[], trends }
+
+POST   /api/v1/inventory/snapshots/create
+Request: { type, date? }
+Response: { snapshot, itemsProcessed }
+
+GET    /api/v1/inventory/variance-analysis
+Query: ?startDate=ISO&endDate=ISO&threshold=5
+Response: { analysis, topVariances[], trends }
+
+GET    /api/v1/inventory/shrinkage-report
+Query: ?startDate=ISO&endDate=ISO&categoryId=uuid
+Response: { report, totalShrinkage, costImpact, breakdown[] }
+
+GET    /api/v1/inventory/turnover-analysis
+Query: ?startDate=ISO&endDate=ISO
+Response: { analysis, slowMoving[], fastMoving[] }
+
+GET    /api/v1/inventory/value-report
+Query: ?date=ISO
+Response: { totalValue, breakdown[], comparison }
 ```
 
 ### Transaction Endpoints
@@ -2251,11 +2816,15 @@ System Capacity:
 - Bulk import/export
 - Stock adjustments
 - Low stock alerts
+- **Physical count session management**
+- **Count interface (web and mobile)**
 
 **Week 23-24: Reporting**
 - Sales reports
 - Inventory reports
 - Payment reconciliation
+- **Inventory reconciliation workflows**
+- **Variance analysis and approval**
 - Export functionality (PDF, CSV)
 
 **Week 25-26: User & Terminal Management**
@@ -2280,17 +2849,26 @@ System Capacity:
 - Background sync
 - Sync status UI
 
-**Week 31-32: Analytics**
+**Week 31-32: Advanced Analytics & Reconciliation**
 - Advanced reporting
 - Data visualization
 - Predictive analytics
 - Custom report builder
+- **Automated inventory snapshots**
+- **Shrinkage trend analysis**
+- **Inventory accuracy scoring**
 
 **Week 33-34: Additional Features**
 - Customer management
 - Loyalty program
 - Discount and promotion engine
 - Multi-location support
+- **Advanced reconciliation features:**
+  - **Automated variance alerts**
+  - **Scheduled count sessions**
+  - **Mobile count app**
+  - **Barcode scanning for counts**
+  - **Historical variance analysis**
 
 ---
 
@@ -2634,9 +3212,10 @@ documentation/
 
 ## Document History
 
-| Version | Date       | Author | Changes                    |
-|---------|------------|--------|----------------------------|
-| 1.0     | 2026-01-12 | Team   | Initial architecture draft |
+| Version | Date       | Author | Changes                                                                    |
+|---------|------------|--------|---------------------------------------------------------------------------|
+| 1.0     | 2026-01-12 | Team   | Initial architecture draft                                                 |
+| 1.1     | 2026-01-13 | Team   | Added inventory reconciliation features, count sessions, variance analysis, and POS integration |
 
 ---
 
@@ -2652,6 +3231,15 @@ documentation/
 - **PCI DSS:** Payment Card Industry Data Security Standard
 - **JWT:** JSON Web Token
 - **ESC/POS:** Standard printer command language
+- **Reconciliation:** Process of comparing physical inventory counts with system records
+- **Variance:** Difference between physical count and system quantity (can be positive or negative)
+- **Shrinkage:** Inventory loss due to theft, damage, errors, or other factors
+- **Cycle Count:** Periodic counting of a subset of inventory items
+- **Blind Count:** Physical count performed without showing system quantities to the counter
+- **COGS:** Cost of Goods Sold - the direct costs attributable to the production of goods sold
+- **Inventory Snapshot:** Point-in-time capture of inventory levels for historical tracking
+- **Count Session:** A scheduled or ad-hoc physical inventory counting activity
+- **Recount:** Secondary count performed to verify initial count when variance is detected
 
 ### References
 
