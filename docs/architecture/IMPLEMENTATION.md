@@ -248,19 +248,25 @@ This document provides the phased implementation roadmap, hardware specification
 
 ### Server Requirements
 
-#### Cloud Hosting (Recommended)
-- **AWS t3.medium** or equivalent (minimum for small deployment)
-- **vCPUs:** 2
-- **RAM:** 4GB (can scale up)
-- **Storage:** 100GB SSD (database + logs)
-- **Scaling:** Auto-scaling group for production
+#### Local Server (Recommended)
+**For small to medium deployments (1-10 terminals):**
+- **OS:** Windows Server 2019+, macOS Server, or Linux (Ubuntu Server 20.04+)
+- **CPU:** Intel Core i5/i7 or Xeon E-2100 series (4+ cores)
+- **RAM:** 16GB minimum, 32GB recommended
+- **Storage:** 500GB SSD minimum (RAID 1 recommended for redundancy)
+- **Network:** Gigabit Ethernet (dual NICs recommended)
+- **UPS:** Uninterruptible Power Supply for power protection
+- **Backup:** External NAS or large external drives
 
-#### Self-Hosted (Alternative)
-- Server-grade hardware
-- Redundant power supply
-- RAID storage configuration
-- Backup solution
-- 24/7 uptime
+#### Server-Grade Hardware (For larger deployments)
+- **CPU:** Intel Xeon or AMD EPYC (8+ cores)
+- **RAM:** 32GB-64GB
+- **Storage:** 1TB+ SSD in RAID 10 configuration
+- **Redundant power supply**
+- **Hot-swap drive bays**
+- **Network:** Dual gigabit Ethernet with bonding/failover
+- **UPS:** Enterprise-grade UPS with extended runtime
+- **Remote management:** iLO, iDRAC, or similar
 
 ---
 
@@ -298,11 +304,12 @@ This document provides the phased implementation roadmap, hardware specification
 ```
 
 #### Monitoring Tools
-- **APM:** New Relic, Datadog, or AWS CloudWatch
-- **Error Tracking:** Sentry
-- **Logs:** ELK Stack (Elasticsearch, Logstash, Kibana)
-- **Uptime:** Pingdom, UptimeRobot
-- **Alerting:** PagerDuty, Slack webhooks
+- **APM:** Prometheus + Grafana (self-hosted)
+- **Error Tracking:** Sentry (self-hosted) or custom logging
+- **Logs:** ELK Stack (Elasticsearch, Logstash, Kibana) self-hosted or Graylog
+- **Uptime:** Uptime Kuma (self-hosted) or simple health check scripts
+- **Alerting:** Grafana alerts, email, or Slack webhooks
+- **Network Monitoring:** Zabbix or Nagios (self-hosted)
 
 ---
 
@@ -346,8 +353,8 @@ backups:
   database:
     full_backup:
       frequency: "Daily at 2 AM"
-      retention: "30 days"
-      location: "AWS S3 with versioning"
+      retention: "30 days online, 1 year archived"
+      location: "Local NAS or external drive"
 
     incremental_backup:
       frequency: "Every 6 hours"
@@ -356,20 +363,31 @@ backups:
     point_in_time_recovery:
       enabled: true
       retention: "7 days"
+      location: "WAL archive on backup storage"
 
   application:
     config_backup:
       frequency: "On change"
       versioned: true
+      location: "Git repository + backup storage"
+
+    file_storage:
+      frequency: "Daily"
+      location: "NAS or secondary local storage"
 
     logs:
-      retention: "90 days"
-      archived: true
+      retention: "90 days online, 1 year archived"
+      location: "Local storage with rotation"
+
+  offsite:
+    frequency: "Weekly"
+    location: "External drive taken offsite or cloud backup"
+    retention: "3 months"
 
   testing:
     restore_test:
       frequency: "Monthly"
-      verification: "Automated tests"
+      verification: "Restore to test environment"
 ```
 
 ---
@@ -416,9 +434,9 @@ Annually:
 
 ### Backup Sites
 
-1. **Primary Site:** Main production environment (AWS us-east-1)
-2. **Secondary Site:** Failover environment (AWS us-west-2)
-3. **Tertiary:** Local backup server (optional)
+1. **Primary Site:** Main production server (on-premise)
+2. **Secondary Site:** Backup server (on-premise, different location if possible)
+3. **Tertiary:** Off-site backup storage (external drives or cloud backup service)
 
 ---
 
@@ -441,29 +459,45 @@ Recovery Point Objective (RPO): 1 hour
 ```yaml
 automatic_failover:
   triggers:
-    - Primary region unavailability
+    - Primary server unavailability
     - Database failure
-    - Network partition
+    - Network partition (if HA setup)
 
   actions:
-    - Route traffic to secondary region
-    - Promote read replica to primary
-    - Update DNS records
+    - Switch to backup server (if configured)
+    - Promote standby database replica to primary
+    - Update application connection strings
+    - Enable terminal offline mode if servers unavailable
     - Notify operations team
 
 manual_failover:
   scenarios:
     - Planned maintenance
-    - Security incident
+    - Hardware failure
     - Major outage
 
   steps:
-    1. Assess situation
+    1. Assess situation and verify backup availability
     2. Notify stakeholders
-    3. Execute failover plan
+    3. Execute failover plan:
+       - Stop services on primary
+       - Restore latest backup to secondary server
+       - Update network configuration
+       - Redirect terminals to backup server
     4. Verify functionality
     5. Monitor closely
-    6. Plan failback
+    6. Plan failback when primary restored
+
+terminal_offline_mode:
+  triggers:
+    - Server unreachable
+    - Network failure
+
+  behavior:
+    - Continue operations using local cache
+    - Queue transactions in local database
+    - Allow cash-only transactions
+    - Sync automatically when connection restored
 ```
 
 ---

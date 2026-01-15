@@ -77,36 +77,45 @@ A distributed POS system designed for non-profit organizations with comprehensiv
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Admin Dashboard                       │
-│              (Web-based Management Console)              │
+│         (Web-based - accessed via local network)         │
 └─────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────┐
-│                   API Gateway / Load Balancer            │
+│                  LOCAL SERVER (Windows/Mac/Linux)        │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │           Application Server Layer                  │ │
+│  │  ┌──────────────┐  ┌──────────────┐               │ │
+│  │  │   POS API    │  │  Admin API   │               │ │
+│  │  │   Service    │  │   Service    │               │ │
+│  │  └──────────────┘  └──────────────┘               │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │               Data Layer                            │ │
+│  │  ┌──────────────┐  ┌──────────────┐               │ │
+│  │  │  PostgreSQL  │  │    Redis     │               │ │
+│  │  │   Database   │  │    Cache     │               │ │
+│  │  └──────────────┘  └──────────────┘               │ │
+│  │  ┌──────────────┐  ┌──────────────┐               │ │
+│  │  │  RabbitMQ    │  │ File Storage │               │ │
+│  │  │ Message Queue│  │  (Local FS)  │               │ │
+│  │  └──────────────┘  └──────────────┘               │ │
+│  └────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
-                            ↓
+              ↑                           ↑
+              │    LOCAL NETWORK          │
+              ↓                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│                   Application Server Layer               │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │   POS API    │  │  Admin API   │  │ Integration  │  │
-│  │   Service    │  │   Service    │  │   Service    │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-└─────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────┐
-│                   Data Layer                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │  PostgreSQL  │  │    Redis     │  │   Message    │  │
-│  │   Database   │  │    Cache     │  │    Queue     │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-└─────────────────────────────────────────────────────────┘
-                            ↑
-┌─────────────────────────────────────────────────────────┐
-│                  POS Terminal Clients                    │
+│            POS Terminal Clients (Windows/Mac)            │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
 │  │  Terminal 1  │  │  Terminal 2  │  │  Terminal N  │  │
-│  │  (Desktop)   │  │  (Desktop)   │  │  (Desktop)   │  │
+│  │ (Win/Mac PC) │  │ (Win/Mac PC) │  │ (Win/Mac PC) │  │
+│  │  + Electron  │  │  + Electron  │  │  + Electron  │  │
 │  └──────────────┘  └──────────────┘  └──────────────┘  │
 └─────────────────────────────────────────────────────────┘
+                            ↓
+                    (Internet required)
                             ↓
 ┌─────────────────────────────────────────────────────────┐
 │              External Payment Services                   │
@@ -114,6 +123,9 @@ A distributed POS system designed for non-profit organizations with comprehensiv
 │  │    Square    │  │    Stripe    │  │    PayPal    │  │
 │  └──────────────┘  └──────────────┘  └──────────────┘  │
 └─────────────────────────────────────────────────────────┘
+
+Note: Internet connection only required for payment processing.
+All other operations work on local network.
 ```
 
 ---
@@ -240,10 +252,10 @@ CONTINUOUS CYCLE:
    - Import Service (bulk vendor database import)
 
 3. **Data Layer**
-   - PostgreSQL (primary relational database)
-   - Redis (caching, session management, pub/sub)
-   - Message Queue (RabbitMQ/Redis for async operations)
-   - Object Storage (S3 for receipts, reports, product images, import files)
+   - PostgreSQL (primary relational database - self-hosted on local server)
+   - Redis (caching, session management, pub/sub - self-hosted on local server)
+   - Message Queue (RabbitMQ for async operations - self-hosted on local server)
+   - File Storage (Local file system or NAS for receipts, reports, product images, import files)
 
 ---
 
@@ -251,12 +263,13 @@ CONTINUOUS CYCLE:
 
 ### Backend Services
 - **API Framework:** Node.js with Express.js or Python with FastAPI/Django REST Framework
-- **Database:** PostgreSQL 15+ (primary) for ACID compliance and complex queries
-- **Cache:** Redis 7+ for session management and frequently accessed data
-- **Message Queue:** RabbitMQ or Redis Pub/Sub for real-time updates
-- **API Gateway:** Kong, AWS API Gateway, or Nginx with Lua scripting
+- **Database:** PostgreSQL 15+ (self-hosted on local server) for ACID compliance and complex queries
+- **Cache:** Redis 7+ (self-hosted on local server) for session management and frequently accessed data
+- **Message Queue:** RabbitMQ (self-hosted on local server) for async operations and real-time updates
+- **API Gateway:** Nginx with Lua scripting or built-in Express.js routing (running on local server)
 - **Authentication:** JWT tokens with refresh token rotation
 - **ORM:** TypeORM (Node.js) or SQLAlchemy (Python)
+- **File Storage:** Local file system with organized directory structure or NAS (Network Attached Storage)
 
 ### Frontend Applications
 
@@ -277,12 +290,13 @@ CONTINUOUS CYCLE:
 - **Data Grid:** AG Grid or React Table
 
 ### DevOps & Infrastructure
-- **Containerization:** Docker
-- **Orchestration:** Kubernetes (production) or Docker Swarm
-- **CI/CD:** GitHub Actions, GitLab CI, or Jenkins
-- **Monitoring:** Prometheus + Grafana, Datadog, or New Relic
-- **Logging:** ELK Stack (Elasticsearch, Logstash, Kibana) or CloudWatch
-- **Error Tracking:** Sentry
+- **Containerization:** Docker (optional, for easier deployment and isolation)
+- **Orchestration:** Docker Compose (for multi-container deployment on local server)
+- **CI/CD:** GitHub Actions, GitLab CI, or Jenkins (self-hosted)
+- **Monitoring:** Prometheus + Grafana (self-hosted on local server or monitoring machine)
+- **Logging:** ELK Stack (Elasticsearch, Logstash, Kibana) self-hosted or simple file-based logging
+- **Error Tracking:** Sentry (self-hosted) or custom error logging
+- **Backup:** Automated backups to local NAS, external drives, or dedicated backup server
 
 ---
 

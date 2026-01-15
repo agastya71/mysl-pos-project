@@ -155,9 +155,9 @@ const isValid = await bcrypt.compare(password, hash);
 ### Encryption at Rest
 
 **Database Encryption:**
-- PostgreSQL Transparent Data Encryption (TDE)
-- AWS RDS encryption enabled
-- Encrypted EBS volumes for database storage
+- PostgreSQL Transparent Data Encryption (TDE) or pgcrypto extension
+- Full disk encryption on local server (BitLocker for Windows, FileVault for Mac, LUKS for Linux)
+- Encrypted storage volumes for database files
 
 **Sensitive Fields:**
 Fields requiring application-level encryption:
@@ -242,9 +242,9 @@ Customer Card → Square Terminal → Tokenized
 ### Data Backup & Retention
 
 **Backup Schedule:**
-- **Database:** Daily full + hourly incrementals
-- **File Storage:** Daily backups to S3 Glacier
-- **Audit Logs:** Continuous archival
+- **Database:** Daily full + hourly incrementals to local NAS or external drive
+- **File Storage:** Daily backups to secondary local storage or NAS
+- **Audit Logs:** Continuous archival to local storage
 
 **Retention Policies:**
 - Transactions: 7 years (tax/audit requirements)
@@ -420,15 +420,13 @@ For remote administration:
 
 ### DDoS Protection
 
-**CloudFlare Protection:**
-- WAF (Web Application Firewall)
-- Rate limiting at edge
-- Bot detection
-- Challenge pages for suspicious traffic
-
-**AWS Shield:**
-- Standard (free) - Basic DDoS protection
-- Advanced (paid) - Enhanced protection + support
+**Local Network Protection:**
+- Firewall rules on local server and router
+- Rate limiting at application level
+- Network intrusion detection system (IDS) like Snort or Suricata (optional)
+- Restrict external access - system should only be accessible on local network
+- VPN required for any remote administration
+- Monitor for unusual traffic patterns
 
 ---
 
@@ -515,135 +513,153 @@ interface AuditLog {
 ### Log Analysis
 
 Tools:
-- **ELK Stack** (Elasticsearch, Logstash, Kibana)
-- **CloudWatch** Logs (AWS)
-- **Datadog** or **New Relic**
-- **Sentry** for error tracking
+- **ELK Stack** (Elasticsearch, Logstash, Kibana) - self-hosted on local server
+- **Graylog** - self-hosted alternative to ELK
+- **Simple file-based logging** with log rotation
+- **Sentry** (self-hosted) for error tracking
+- **Grafana Loki** - lightweight log aggregation (self-hosted)
 
 ---
 
 ## Deployment Architectures
 
-### Cloud Deployment (AWS)
+### Local Server Deployment (Recommended)
 
 **Architecture Diagram:**
 ```
 ┌──────────────────────────────────────────────────────┐
-│                    Route 53 (DNS)                     │
+│              LOCAL NETWORK (192.168.x.x)             │
+│                                                       │
+│  ┌────────────────────────────────────────────────┐ │
+│  │          LOCAL SERVER (Win/Mac/Linux)          │ │
+│  │                                                 │ │
+│  │  ┌──────────────────────────────────────────┐ │ │
+│  │  │     Application Layer (Docker/Native)    │ │ │
+│  │  │  ┌────────────┐    ┌────────────┐       │ │ │
+│  │  │  │  POS API   │    │  Admin API │       │ │ │
+│  │  │  │  Service   │    │  Service   │       │ │ │
+│  │  │  │  (Node.js) │    │  (Node.js) │       │ │ │
+│  │  │  └────────────┘    └────────────┘       │ │ │
+│  │  └──────────────────────────────────────────┘ │ │
+│  │                                                 │ │
+│  │  ┌──────────────────────────────────────────┐ │ │
+│  │  │            Data Layer                    │ │ │
+│  │  │  ┌────────────┐    ┌────────────┐       │ │ │
+│  │  │  │PostgreSQL  │    │   Redis    │       │ │ │
+│  │  │  │  Database  │    │   Cache    │       │ │ │
+│  │  │  └────────────┘    └────────────┘       │ │ │
+│  │  │  ┌────────────┐    ┌────────────┐       │ │ │
+│  │  │  │ RabbitMQ   │    │   Local    │       │ │ │
+│  │  │  │   Queue    │    │  Storage   │       │ │ │
+│  │  │  └────────────┘    └────────────┘       │ │ │
+│  │  └──────────────────────────────────────────┘ │ │
+│  └────────────────────────────────────────────────┘ │
+│                        ↑                             │
+│                        │                             │
+│  ┌─────────────────────┴──────────────────────────┐ │
+│  │          POS Terminals (Win/Mac Laptops)       │ │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐      │ │
+│  │  │Terminal 1│ │Terminal 2│ │Terminal N│      │ │
+│  │  │(Electron)│ │(Electron)│ │(Electron)│      │ │
+│  │  └──────────┘ └──────────┘ └──────────┘      │ │
+│  └────────────────────────────────────────────────┘ │
+│                                                       │
+│  ┌────────────────────────────────────────────────┐ │
+│  │     Admin Workstation (Any PC on network)     │ │
+│  │        Access admin dashboard via browser      │ │
+│  └────────────────────────────────────────────────┘ │
+│                                                       │
+│  ┌────────────────────────────────────────────────┐ │
+│  │   Backup Storage (NAS or External Drive)      │ │
+│  │   - Database backups                           │ │
+│  │   - File backups                               │ │
+│  │   - Audit logs                                 │ │
+│  └────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────┘
-                          ↓
+              ↓ (Internet - only for payments)
 ┌──────────────────────────────────────────────────────┐
-│            CloudFront (CDN) / WAF                     │
-└──────────────────────────────────────────────────────┘
-                          ↓
-┌──────────────────────────────────────────────────────┐
-│        Application Load Balancer (ALB)               │
-│        - SSL Termination                              │
-│        - Health Checks                                │
-│        - Auto-scaling triggers                        │
-└──────────────────────────────────────────────────────┘
-                          ↓
-┌──────────────────────────────────────────────────────┐
-│           ECS/EKS Cluster (Application Layer)        │
-│  ┌────────────────┐  ┌────────────────┐             │
-│  │  API Service   │  │ Admin Service  │             │
-│  │  (Auto-scaled) │  │  (Auto-scaled) │             │
-│  │  2-10 instances│  │  1-3 instances │             │
-│  └────────────────┘  └────────────────┘             │
-└──────────────────────────────────────────────────────┘
-                          ↓
-┌──────────────────────────────────────────────────────┐
-│                   Data Layer                          │
-│  ┌────────────────┐  ┌────────────────┐             │
-│  │ RDS PostgreSQL │  │ ElastiCache    │             │
-│  │ - Multi-AZ     │  │ Redis          │             │
-│  │ - Read Replica │  │ - Replication  │             │
-│  └────────────────┘  └────────────────┘             │
-│  ┌────────────────┐  ┌────────────────┐             │
-│  │  S3 Storage    │  │  SQS Queues    │             │
-│  │  - Receipts    │  │  - Async Jobs  │             │
-│  │  - Reports     │  │  - Imports     │             │
-│  └────────────────┘  └────────────────┘             │
+│          External Payment Services (Optional)        │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐    │
+│  │   Square   │  │   Stripe   │  │   PayPal   │    │
+│  └────────────┘  └────────────┘  └────────────┘    │
 └──────────────────────────────────────────────────────┘
 ```
 
-**Services Used:**
-- **Route 53:** DNS management
-- **CloudFront:** CDN + caching
-- **WAF:** Web Application Firewall
-- **ALB:** Load balancing
-- **ECS/EKS:** Container orchestration
-- **RDS:** Managed PostgreSQL
-- **ElastiCache:** Managed Redis
-- **S3:** Object storage
-- **SQS:** Message queuing
-- **CloudWatch:** Monitoring & logging
+**Components:**
+- **Local Server:** Dedicated server machine running all backend services
+- **PostgreSQL:** Self-hosted database on local server
+- **Redis:** Self-hosted cache on local server
+- **RabbitMQ:** Self-hosted message queue on local server
+- **File Storage:** Local file system or mounted NAS
+- **Backup Storage:** NAS, external drives, or dedicated backup server
+- **Network:** Local Ethernet/WiFi network (isolated from internet if desired)
 
-### On-Premise Deployment
+### High-Availability On-Premise Deployment (Optional)
 
-**Architecture:**
+**For larger deployments requiring redundancy:**
 ```
 ┌──────────────────────────────────────────┐
-│          HAProxy Load Balancer           │
-│          (2 instances, keepalived)       │
+│          Nginx Load Balancer             │
+│          (with backup server)            │
 └──────────────────────────────────────────┘
                     ↓
 ┌──────────────────────────────────────────┐
-│        Application Servers (3+)          │
+│        Application Servers (2+)          │
 │        - Docker containers               │
-│        - Nginx reverse proxy             │
+│        - Service replication             │
 └──────────────────────────────────────────┘
                     ↓
 ┌──────────────────────────────────────────┐
-│      PostgreSQL Cluster (Primary +        │
-│      2 replicas with pgpool)             │
+│      PostgreSQL with Replication         │
+│      (Primary + Standby with pg_pool)    │
 └──────────────────────────────────────────┘
 ```
 
 **Requirements:**
-- Minimum 3 application servers
-- PostgreSQL cluster (primary + 2 replicas)
-- Redis cluster (3 nodes)
-- Load balancer (HAProxy or Nginx)
-- Shared storage (NFS or similar)
-- Backup server
+- 2+ application servers for redundancy
+- PostgreSQL with streaming replication (primary + standby)
+- Redis cluster (3 nodes) or Redis Sentinel for failover
+- Load balancer (Nginx)
+- Shared storage (NAS or SAN)
+- Dedicated backup server or NAS
 - Monitoring server (Prometheus + Grafana)
 
-### Hybrid Deployment
+### Single-Server Deployment (Small Deployments)
 
-**Scenario:** Cloud backend + On-premise terminals
-
-- **Cloud:** Database, API services
-- **On-premise:** POS terminals with local caching
-- **Sync:** Periodic synchronization
-- **Failover:** Local SQLite for offline mode
+**For small businesses or single location:**
+- Single server running all services (API, PostgreSQL, Redis, RabbitMQ)
+- POS terminals connect directly to server
+- Regular backups to external storage
+- UPS for power protection
+- Simpler to manage but no high availability
 
 ---
 
 ## Infrastructure as Code
 
-### Terraform Structure
+### Ansible Configuration (Recommended for Local Deployment)
 
 ```
-terraform/
-├── main.tf                 # Main configuration
-├── variables.tf            # Variable definitions
-├── outputs.tf              # Output values
-├── provider.tf             # Provider configuration
-├── backend.tf              # State backend configuration
-├── modules/
-│   ├── vpc/               # VPC, subnets, routing
-│   ├── alb/               # Application Load Balancer
-│   ├── ecs/               # ECS cluster & services
-│   ├── rds/               # RDS PostgreSQL
-│   ├── elasticache/       # Redis cluster
-│   ├── s3/                # S3 buckets
-│   ├── cloudfront/        # CDN configuration
-│   └── iam/               # IAM roles & policies
-└── environments/
-    ├── dev/               # Development environment
-    ├── staging/           # Staging environment
-    └── production/        # Production environment
+ansible/
+├── inventory/
+│   ├── production.yml     # Production servers
+│   ├── staging.yml        # Staging servers
+│   └── development.yml    # Development servers
+├── playbooks/
+│   ├── setup_server.yml   # Initial server setup
+│   ├── deploy_app.yml     # Application deployment
+│   ├── backup.yml         # Backup configuration
+│   └── monitoring.yml     # Monitoring setup
+├── roles/
+│   ├── postgresql/        # PostgreSQL installation
+│   ├── redis/             # Redis installation
+│   ├── rabbitmq/          # RabbitMQ installation
+│   ├── nodejs/            # Node.js installation
+│   ├── nginx/             # Nginx configuration
+│   └── backup/            # Backup scripts
+└── group_vars/
+    ├── all.yml            # Common variables
+    └── production.yml     # Production variables
 ```
 
 ### Docker Configuration
@@ -828,28 +844,44 @@ System Capacity:
 
 ### Monitoring Stack
 
-**Option 1: Prometheus + Grafana**
+**Recommended: Prometheus + Grafana (Self-Hosted)**
 ```yaml
 # prometheus.yml
 scrape_configs:
   - job_name: 'api'
     static_configs:
-      - targets: ['api:3000']
+      - targets: ['localhost:3000']
   - job_name: 'postgres'
     static_configs:
-      - targets: ['postgres-exporter:9187']
+      - targets: ['localhost:9187']  # postgres_exporter
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['localhost:9121']  # redis_exporter
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']  # node_exporter
 ```
 
-**Option 2: Datadog**
-```typescript
-import { StatsD } from 'hot-shots';
+**Docker Compose for Monitoring:**
+```yaml
+version: '3.8'
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
 
-const statsd = new StatsD({ host: 'localhost', port: 8125 });
-
-// Track metrics
-statsd.increment('api.requests');
-statsd.timing('api.response_time', responseTime);
-statsd.gauge('api.active_connections', activeConnections);
+  grafana:
+    image: grafana/grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=changeme
 ```
 
 ### Alerting Rules
@@ -879,32 +911,43 @@ statsd.gauge('api.active_connections', activeConnections);
 ### Backup Strategy
 
 **Database:**
-- Full backup: Daily at 2 AM
-- Incremental backup: Every hour
-- WAL archiving: Continuous
-- Retention: 90 days
+- Full backup: Daily at 2 AM to local NAS/external drive
+- Incremental backup: Every 6 hours
+- WAL archiving: Continuous to backup storage
+- Retention: 90 days online, longer in cold storage
+- Off-site backup: Weekly to external location or cloud backup service
 
 **Application:**
-- Docker images: Versioned in registry
-- Configuration: Git repository
-- Secrets: AWS Secrets Manager / HashiCorp Vault
+- Docker images: Versioned in local registry or Docker Hub
+- Configuration: Git repository (self-hosted or GitHub)
+- Secrets: HashiCorp Vault (self-hosted) or encrypted configuration files
+- File storage: Daily sync to backup NAS
 
 ### Failover Procedures
 
 1. **Database Failover:**
-   - Promote read replica to primary
-   - Update DNS/connection strings
+   - Promote standby replica to primary (if using replication)
+   - Update connection strings in application configuration
    - Verify data integrity
+   - Redirect application to new primary database
 
-2. **Application Failover:**
-   - Redirect traffic to backup region
-   - Scale up instances
-   - Verify health checks
+2. **Server Failover:**
+   - Switch to backup server (if available in HA setup)
+   - Restore from latest backup if primary server fails
+   - Update network configuration to point to backup server
+   - Verify all services are running
 
 3. **Terminal Offline Mode:**
-   - Use local SQLite cache
-   - Queue transactions locally
-   - Sync when connection restored
+   - Terminals automatically switch to local SQLite cache when server is unreachable
+   - Queue transactions locally in IndexedDB
+   - Continue basic operations (cash transactions, product lookup from cache)
+   - Auto-sync when connection restored
+
+4. **Network Failure:**
+   - Terminals continue operating in offline mode
+   - Investigate network issues (router, switch, cables)
+   - Restore network connectivity
+   - Verify synchronization of queued transactions
 
 ---
 
