@@ -1,0 +1,75 @@
+{
+  "customInstructions": "You are working on a Point of Sale (POS) system for non-profit organizations. Before starting any task:\n\n1. READ THESE FILES FIRST:\n   - .claude/rules.md - Coding standards and rules\n   - .claude/context.md - Project context and architecture\n   - .claude/prompts.md - Task-specific guidance\n\n2. ALWAYS FOLLOW:\n   - TypeScript strict mode\n   - Security-first mindset (validate inputs, prevent SQL injection)\n   - Three-tier architecture (Presentation, Application, Data)\n   - Service layer pattern for business logic\n   - RESTful API conventions\n   - Write tests for all new code (80%+ coverage)\n\n3. KEY REMINDERS:\n   - This is a LOCAL-FIRST system (self-hosted, minimal cloud)\n   - Target users: Non-profit thrift stores and donation centers\n   - Security is critical: PCI compliance for payments, audit trails\n   - Use UUID for primary keys, snake_case for database\n   - Never commit secrets, never log sensitive data\n   - Payment processing via Square SDK only (never store card data)\n\n4. REFERENCE DOCUMENTATION:\n   - docs/ARCHITECTURE.md - System overview\n   - docs/architecture/API_ENDPOINTS.md - API patterns\n   - docs/architecture/DATA_MODEL.md - Database schema\n   - docs/architecture/UI_UX_DESIGN.md - UI guidelines\n\n5. BEFORE COMMITTING:\n   - Run all tests (npm test)\n   - Check ESLint (npm run lint)\n   - Remove console.log and debugger statements\n   - Verify no secrets in code\n   - Follow conventional commit format\n\nCurrent Phase: Phase 1 - Core Functionality (see docs/IMPLEMENTATION_GUIDE.md)\n\nRemember: Build incrementally, prioritize security, write comprehensive tests, and keep code simple and maintainable.",
+
+  "rules": [
+    "Always read .claude/rules.md, .claude/context.md, and .claude/prompts.md before starting work",
+    "Use TypeScript strict mode for all code",
+    "Never commit sensitive data (API keys, passwords, tokens)",
+    "Always validate and sanitize user inputs",
+    "Use parameterized queries to prevent SQL injection",
+    "Write comprehensive tests (unit, integration, e2e) for all features",
+    "Follow established patterns in the codebase",
+    "Prioritize security in all decisions",
+    "Keep functions small and focused (< 50 lines)",
+    "Use meaningful variable and function names",
+    "Document complex business logic with comments",
+    "Handle all error scenarios explicitly",
+    "Never log sensitive data",
+    "Follow REST API conventions",
+    "Use proper HTTP status codes",
+    "Implement proper authentication and authorization",
+    "Keep components small and reusable",
+    "Use React hooks properly with correct dependencies",
+    "Optimize performance (database queries, bundle size)",
+    "Follow conventional commit format (feat:, fix:, docs:, etc.)"
+  ],
+
+  "workflowGuidance": {
+    "beforeCoding": [
+      "Read relevant documentation in docs/",
+      "Check .claude/rules.md for applicable standards",
+      "Review .claude/context.md for project context",
+      "Use .claude/prompts.md for task-specific guidance",
+      "Check for existing similar code",
+      "Plan the implementation approach"
+    ],
+    "whileCoding": [
+      "Follow TypeScript strict mode",
+      "Validate all inputs",
+      "Use parameterized database queries",
+      "Handle errors explicitly",
+      "Add appropriate logging",
+      "Write tests as you go",
+      "Keep functions small and focused",
+      "Follow naming conventions"
+    ],
+    "beforeCommitting": [
+      "Run all tests (npm test)",
+      "Run linter (npm run lint)",
+      "Remove console.log statements",
+      "Remove debugger statements",
+      "Verify no secrets in code",
+      "Review changes carefully",
+      "Write clear commit message",
+      "Ensure commits are atomic and focused"
+    ],
+    "beforePR": [
+      "All tests passing",
+      "Test coverage maintained/improved",
+      "Documentation updated",
+      "No merge conflicts",
+      "Security review completed",
+      "Performance impact assessed",
+      "Breaking changes documented"
+    ]
+  },
+
+  "keyPaths": {
+    "documentation": "docs/",
+    "architecture": "docs/architecture/",
+    "schema": "schema/",
+    "backend": "backend/",
+    "posClient": "pos-client/",
+    "adminDashboard": "admin-dashboard/"
+  }
+}
