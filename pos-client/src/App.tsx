@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from './store';
 import { LoginPage } from './pages/LoginPage';
 import { POSPage } from './pages/POSPage';
+import TransactionHistoryPage from './pages/TransactionHistoryPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -20,6 +21,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <POSPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/pos/history"
+          element={
+            <PrivateRoute>
+              <TransactionHistoryPage />
             </PrivateRoute>
           }
         />

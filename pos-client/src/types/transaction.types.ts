@@ -104,3 +104,24 @@ export interface CreatePaymentRequest {
     check_number?: string;
   };
 }
+
+export interface TransactionListQuery {
+  page?: number;
+  limit?: number;
+  status?: Transaction['status'];
+  start_date?: string;
+  end_date?: string;
+  cashier_id?: string;
+  terminal_id?: string;
+  transaction_number?: string;
+}
+
+export interface TransactionListResponse {
+  transactions: Transaction[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
