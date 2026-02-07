@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { authApi, LoginRequest, LoginResponse } from '../../services/api/auth.api';
 
-interface AuthState {
+export interface AuthState {
   user: LoginResponse['user'] | null;
   isAuthenticated: boolean;
   isLoading: boolean;

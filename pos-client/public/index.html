@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>POS Client</title>
+  <script>
+    // Polyfill for Node.js global object in browser
+    window.global = window;
+    window.process = window.process || { env: {} };
+  </script>
   <style>
     * {
       margin: 0;

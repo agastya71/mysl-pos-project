@@ -1,17 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { RootState, AppDispatch } from '../store';
 import { logout } from '../store/slices/auth.slice';
+import ProductPanel from '../components/Product/ProductPanel';
+import CartPanel from '../components/Cart/CartPanel';
+import CheckoutModal from '../components/Checkout/CheckoutModal';
 
 export const POSPage: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   const handleLogout = async () => {
     await dispatch(logout());
     navigate('/login');
+  };
+
+  const handleCheckout = () => {
+    setIsCheckoutOpen(true);
+  };
+
+  const handleCloseCheckout = () => {
+    setIsCheckoutOpen(false);
   };
 
   return (
@@ -25,14 +37,15 @@ export const POSPage: React.FC = () => {
           </button>
         </div>
       </header>
-      <main style={styles.main}>
-        <div style={styles.placeholder}>
-          <h2>POS Interface</h2>
-          <p>Point of Sale interface will be implemented here</p>
-          <p style={styles.info}>User: {user?.username}</p>
-          <p style={styles.info}>Role: {user?.role}</p>
+      <main style={styles.layout}>
+        <div style={styles.productPanel}>
+          <ProductPanel />
+        </div>
+        <div style={styles.cartPanel}>
+          <CartPanel onCheckout={handleCheckout} />
         </div>
       </main>
+      <CheckoutModal isOpen={isCheckoutOpen} onClose={handleCloseCheckout} />
     </div>
   );
 };
@@ -42,6 +55,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column' as const,
     height: '100vh',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     display: 'flex',
@@ -69,22 +83,21 @@ const styles = {
     cursor: 'pointer',
     fontWeight: '500',
   },
-  main: {
+  layout: {
     flex: 1,
     display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    overflow: 'hidden',
   },
-  placeholder: {
-    textAlign: 'center' as const,
-    padding: '2rem',
+  productPanel: {
+    flex: '0 0 65%',
+    padding: '1rem',
+    overflowY: 'auto' as const,
+  },
+  cartPanel: {
+    flex: '0 0 35%',
     backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-  },
-  info: {
-    color: '#666',
-    marginTop: '0.5rem',
+    borderLeft: '1px solid #e0e0e0',
+    display: 'flex',
+    flexDirection: 'column' as const,
   },
 };
