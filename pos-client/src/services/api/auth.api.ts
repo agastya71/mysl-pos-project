@@ -11,6 +11,7 @@ export interface LoginResponse {
     username: string;
     full_name: string;
     role: string;
+    assigned_terminal_id?: string;
   };
   tokens: {
     accessToken: string;
