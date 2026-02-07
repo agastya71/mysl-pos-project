@@ -15,11 +15,28 @@ This POS application provides a complete retail solution with:
 
 ## Documentation
 
+- **[Development Guide](./DEVELOPMENT.md)** - **START HERE!** Complete setup guide for all platforms (Mac, Windows, Linux)
 - **[Architecture Document](./docs/ARCHITECTURE.md)** - Comprehensive system architecture and design
 - **[Getting Started Guide](./docs/GETTING_STARTED.md)** - Setup and development instructions
 - **[Project Structure](./docs/PROJECT_STRUCTURE.md)** - Code organization and folder structure
 
 ## Quick Start
+
+### For New Contributors
+
+**Use the automated startup scripts:**
+
+```bash
+# macOS/Linux
+./start-dev.sh
+
+# Windows
+start-dev.bat
+```
+
+See **[DEVELOPMENT.md](./DEVELOPMENT.md)** for detailed platform-specific instructions.
+
+### Manual Quick Start
 
 ### Prerequisites
 
