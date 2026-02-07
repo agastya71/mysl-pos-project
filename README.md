@@ -23,10 +23,9 @@ This POS application provides a complete retail solution with:
 
 ### Prerequisites
 
-- Node.js 18+ or Python 3.9+
-- PostgreSQL 15+
-- Redis 7+
-- Docker & Docker Compose (optional but recommended)
+- Node.js 18+
+- npm 9+
+- Docker & Docker Compose (recommended)
 
 ### Installation
 
@@ -35,43 +34,85 @@ This POS application provides a complete retail solution with:
 git clone <repository-url>
 cd pos-system
 
-# Install dependencies (will be updated as project develops)
-# Backend
-cd backend
-npm install  # or pip install -r requirements.txt
-
-# POS Terminal Client
-cd ../pos-client
-npm install
-
-# Admin Dashboard
-cd ../admin-dashboard
-npm install
+# Install all dependencies (root + workspaces)
+npm install --legacy-peer-deps
 ```
 
 ### Development
 
-```bash
-# Run with Docker Compose (recommended)
-docker-compose up
+#### Option 1: Using Docker Compose (Recommended)
 
-# Or run services individually:
-# Backend API
+```bash
+# Start PostgreSQL and Redis
+docker-compose up -d postgres redis
+
+# Run backend in development mode
+cd backend
+npm run dev
+
+# In another terminal, run admin dashboard
+cd admin-dashboard
+npm start
+
+# In another terminal, run POS client
+cd pos-client
+npm run electron:dev
+```
+
+#### Option 2: Individual Services
+
+```bash
+# Start all infrastructure services
+docker-compose up -d
+
+# Backend API (runs migrations and seeds automatically)
 cd backend
 npm run dev
 
 # POS Terminal Client
 cd pos-client
-npm run dev
+npm run electron:dev
 
-# Admin Dashboard
+# Admin Dashboard (accessible at http://localhost:3002)
 cd admin-dashboard
-npm run dev
+npm start
 ```
+
+### Default Credentials
+
+- **Username:** admin
+- **Password:** admin123
+
+### Service URLs
+
+- **Backend API:** http://localhost:3000
+- **Health Check:** http://localhost:3000/health
+- **API Endpoints:** http://localhost:3000/api/v1
+- **Admin Dashboard:** http://localhost:3002
+- **PostgreSQL:** localhost:5432
+- **Redis:** localhost:6379
 
 ## Project Status
 
-**Current Phase:** Phase 1 - Foundation and Core Functionality
+**Current Phase:** Bootstrap Complete ✅
+
+The project has been successfully bootstrapped with:
+- ✅ Backend API service with Express/TypeScript
+- ✅ PostgreSQL database with full schema (30+ tables)
+- ✅ Redis for caching and sessions
+- ✅ JWT authentication system
+- ✅ POS Client desktop app (Electron + React)
+- ✅ Admin Dashboard web app (React)
+- ✅ Docker Compose orchestration
+- ✅ Database migrations and seed data
+- ✅ Health check endpoints
+- ✅ Login/logout/token refresh functionality
+
+**Next Steps:** Phase 1 - Core Feature Development
+- Product management APIs
+- POS transaction processing
+- Receipt generation
+- Inventory management
 
 See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed implementation roadmap.
 
@@ -105,12 +146,12 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed implementation roadma
 
 ### Core Features (Phase 1)
 - [x] System architecture designed
-- [ ] Database schema implemented
+- [x] Database schema implemented (30+ tables)
+- [x] Basic POS terminal application
+- [x] User authentication and authorization
 - [ ] Product catalog management
-- [ ] Basic POS terminal application
 - [ ] Transaction processing (cash)
 - [ ] Receipt printing
-- [ ] User authentication and authorization
 
 ### Payment Integration (Phase 2)
 - [ ] Square payment integration
