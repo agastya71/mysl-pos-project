@@ -1,8 +1,22 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { useNavigate, Outlet, NavLink as RouterNavLink } from 'react-router-dom';
 import { RootState, AppDispatch } from '../../store';
 import { logout } from '../../store/slices/auth.slice';
+
+const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
+  return (
+    <RouterNavLink
+      to={to}
+      style={({ isActive }) => ({
+        ...styles.navLink,
+        ...(isActive ? styles.navLinkActive : {}),
+      })}
+    >
+      {children}
+    </RouterNavLink>
+  );
+};
 
 export const AppLayout: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -30,21 +44,11 @@ export const AppLayout: React.FC = () => {
       <div style={styles.layout}>
         <aside style={styles.sidebar}>
           <nav style={styles.nav}>
-            <a href="/dashboard" style={styles.navLink}>
-              Dashboard
-            </a>
-            <a href="/products" style={styles.navLink}>
-              Products
-            </a>
-            <a href="/transactions" style={styles.navLink}>
-              Transactions
-            </a>
-            <a href="/users" style={styles.navLink}>
-              Users
-            </a>
-            <a href="/reports" style={styles.navLink}>
-              Reports
-            </a>
+            <NavLink to="/dashboard">Dashboard</NavLink>
+            <NavLink to="/products">Products</NavLink>
+            <NavLink to="/transactions">Transactions</NavLink>
+            <NavLink to="/users">Users</NavLink>
+            <NavLink to="/reports">Reports</NavLink>
           </nav>
         </aside>
         <main style={styles.main}>
@@ -112,10 +116,16 @@ const styles = {
     flexDirection: 'column' as const,
   },
   navLink: {
+    display: 'block',
     padding: '0.75rem 1.5rem',
     color: '#333',
     textDecoration: 'none',
     transition: 'background-color 0.2s',
+  },
+  navLinkActive: {
+    backgroundColor: '#e9ecef',
+    fontWeight: '600',
+    borderLeft: '3px solid #28a745',
   },
   main: {
     flex: 1,
