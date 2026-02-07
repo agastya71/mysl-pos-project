@@ -8,9 +8,25 @@ export interface AuthState {
   error: string | null;
 }
 
+// Helper function to load auth state from localStorage
+const loadAuthState = (): Pick<AuthState, 'user' | 'isAuthenticated'> => {
+  try {
+    const accessToken = localStorage.getItem('accessToken');
+    const userJson = localStorage.getItem('user');
+
+    if (accessToken && userJson) {
+      const user = JSON.parse(userJson);
+      return { user, isAuthenticated: true };
+    }
+  } catch (error) {
+    console.error('Failed to load auth state from localStorage:', error);
+  }
+
+  return { user: null, isAuthenticated: false };
+};
+
 const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
+  ...loadAuthState(),
   isLoading: false,
   error: null,
 };
@@ -22,6 +38,7 @@ export const login = createAsyncThunk(
       const response = await authApi.login(credentials);
       localStorage.setItem('accessToken', response.tokens.accessToken);
       localStorage.setItem('refreshToken', response.tokens.refreshToken);
+      localStorage.setItem('user', JSON.stringify(response.user));
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error?.message || 'Login failed');
@@ -40,6 +57,7 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   }
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
 });
 
 const authSlice = createSlice({
