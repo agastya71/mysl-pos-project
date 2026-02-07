@@ -32,6 +32,9 @@ export const POSPage: React.FC = () => {
         <h1 style={styles.title}>POS System</h1>
         <div style={styles.userInfo}>
           <span>Welcome, {user?.full_name}</span>
+          <button onClick={() => navigate('/pos/history')} style={styles.historyButton}>
+            📋 History
+          </button>
           <button onClick={handleLogout} style={styles.logoutButton}>
             Logout
           </button>
@@ -73,6 +76,15 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '1rem',
+  },
+  historyButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: 'white',
+    color: '#007bff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontWeight: '500',
   },
   logoutButton: {
     padding: '0.5rem 1rem',
