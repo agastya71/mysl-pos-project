@@ -214,7 +214,7 @@ export class InventoryService {
     const result = await pool.query(
       `SELECT
         p.id,
-        p.product_number,
+        p.sku,
         p.name,
         p.sku,
         p.quantity_in_stock,
@@ -242,7 +242,7 @@ export class InventoryService {
     const result = await pool.query(
       `SELECT
         p.id,
-        p.product_number,
+        p.sku,
         p.name,
         p.sku,
         p.reorder_quantity,
@@ -254,7 +254,7 @@ export class InventoryService {
        LEFT JOIN transactions t ON ti.transaction_id = t.id AND t.status = 'completed'
        WHERE p.quantity_in_stock = 0
          AND p.is_active = true
-       GROUP BY p.id, p.product_number, p.name, p.sku, p.reorder_quantity, c.name
+       GROUP BY p.id, p.sku, p.name, p.sku, p.reorder_quantity, c.name
        ORDER BY p.name ASC`
     );
 
@@ -345,7 +345,7 @@ export class InventoryService {
       )
       SELECT
         p.id as product_id,
-        p.product_number,
+        p.sku,
         p.name as product_name,
         p.sku,
         c.name as category_name,

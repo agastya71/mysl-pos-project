@@ -46,9 +46,8 @@ export interface GetAdjustmentsQuery {
 
 export interface LowStockProduct {
   id: string;
-  product_number: string;
-  name: string;
   sku: string;
+  name: string;
   quantity_in_stock: number;
   reorder_level: number;
   reorder_quantity: number;
@@ -58,9 +57,8 @@ export interface LowStockProduct {
 
 export interface OutOfStockProduct {
   id: string;
-  product_number: string;
-  name: string;
   sku: string;
+  name: string;
   reorder_quantity: number;
   category_name?: string;
   last_sale_date?: Date;
@@ -82,9 +80,8 @@ export interface InventoryValuation {
 
 export interface MovementReportItem {
   product_id: string;
-  product_number: string;
-  product_name: string;
   sku: string;
+  product_name: string;
   category_name?: string;
   opening_stock: number;
   sales_quantity: number;
