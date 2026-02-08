@@ -1,12 +1,47 @@
 /**
- * Out of Stock Report Component
+ * @fileoverview OutOfStockReport Component - Products with zero inventory
  *
- * Displays products with zero quantity
+ * Table report showing products completely out of stock (quantity = 0).
+ * Critical alert list for immediate restocking action.
+ *
+ * @module components/Inventory/OutOfStockReport
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 3C)
+ * @updated 2026-02-08 (Documentation)
  */
 
 import React from 'react';
 import { useAppSelector } from '../../store/hooks';
 
+/**
+ * OutOfStockReport Component
+ *
+ * Displays products with zero inventory in table format.
+ * Reads data from inventoryReports.outOfStock Redux slice.
+ *
+ * Table Columns:
+ * - SKU
+ * - Product Name
+ * - Category
+ * - Reorder Level
+ * - Days Out of Stock
+ * - Status ("OUT OF STOCK" urgent red badge)
+ *
+ * Features:
+ * - Loading state
+ * - Error state (red text)
+ * - Empty state (green checkmark, "No Out of Stock Items")
+ * - All items marked with urgent red badge
+ * - Sorted by days out of stock (longest first)
+ *
+ * @component
+ * @returns {JSX.Element} Out of stock report table or state view
+ *
+ * @example
+ * <OutOfStockReport />
+ *
+ * @see {@link InventoryReportsPage} - Parent page
+ */
 const OutOfStockReport: React.FC = () => {
   const { data, isLoading, error } = useAppSelector(
     (state) => state.inventoryReports.outOfStock
