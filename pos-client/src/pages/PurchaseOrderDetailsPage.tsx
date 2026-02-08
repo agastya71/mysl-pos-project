@@ -372,13 +372,13 @@ const PurchaseOrderDetailsPage: React.FC = () => {
                     {item.quantity_pending}
                   </td>
                   <td style={{ ...tableCellStyle, textAlign: 'right' }}>
-                    ${item.unit_cost.toFixed(2)}
+                    ${Number(item.unit_cost).toFixed(2)}
                   </td>
                   <td style={{ ...tableCellStyle, textAlign: 'right' }}>
-                    ${item.tax_amount.toFixed(2)}
+                    ${Number(item.tax_amount).toFixed(2)}
                   </td>
                   <td style={{ ...tableCellStyle, textAlign: 'right', fontWeight: 'bold' }}>
-                    ${item.line_total.toFixed(2)}
+                    ${Number(item.line_total).toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -398,27 +398,27 @@ const PurchaseOrderDetailsPage: React.FC = () => {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
             <span>Subtotal:</span>
-            <strong>${po.subtotal.toFixed(2)}</strong>
+            <strong>${Number(po.subtotal).toFixed(2)}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
             <span>Tax:</span>
-            <strong>${po.tax_amount.toFixed(2)}</strong>
+            <strong>${Number(po.tax_amount).toFixed(2)}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
             <span>Shipping:</span>
-            <strong>${po.shipping_cost.toFixed(2)}</strong>
+            <strong>${Number(po.shipping_cost).toFixed(2)}</strong>
           </div>
           {po.other_charges > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
               <span>Other Charges:</span>
-              <strong>${po.other_charges.toFixed(2)}</strong>
+              <strong>${Number(po.other_charges).toFixed(2)}</strong>
             </div>
           )}
           {po.discount_amount > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
               <span>Discount:</span>
               <strong style={{ color: '#dc3545' }}>
-                -${po.discount_amount.toFixed(2)}
+                -${Number(po.discount_amount).toFixed(2)}
               </strong>
             </div>
           )}
@@ -433,7 +433,7 @@ const PurchaseOrderDetailsPage: React.FC = () => {
             }}
           >
             <span>Total:</span>
-            <span style={{ color: '#28a745' }}>${po.total_amount.toFixed(2)}</span>
+            <span style={{ color: '#28a745' }}>${Number(po.total_amount).toFixed(2)}</span>
           </div>
         </div>
 

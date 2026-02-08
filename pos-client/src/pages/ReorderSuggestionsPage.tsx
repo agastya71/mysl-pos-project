@@ -202,7 +202,7 @@ const ReorderSuggestionsPage: React.FC = () => {
                       <span style={{ fontSize: '14px', color: '#6c757d' }}>
                         Estimated Total:{' '}
                         <strong style={{ color: '#28a745' }}>
-                          ${vendor.estimated_total.toFixed(2)}
+                          ${Number(vendor.estimated_total).toFixed(2)}
                         </strong>
                       </span>
                     </div>
@@ -321,7 +321,7 @@ const ReorderSuggestionsPage: React.FC = () => {
                           </td>
                           <td style={{ ...tableCellStyle, textAlign: 'right' }}>
                             {product.unit_cost !== null
-                              ? `$${product.unit_cost.toFixed(2)}`
+                              ? `$${Number(product.unit_cost).toFixed(2)}`
                               : 'N/A'}
                           </td>
                           <td
@@ -361,7 +361,7 @@ const ReorderSuggestionsPage: React.FC = () => {
                           fontSize: '16px',
                         }}
                       >
-                        ${vendor.estimated_total.toFixed(2)}
+                        ${Number(vendor.estimated_total).toFixed(2)}
                       </td>
                     </tr>
                   </tfoot>

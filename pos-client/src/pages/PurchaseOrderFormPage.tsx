@@ -600,7 +600,7 @@ const PurchaseOrderFormPage: React.FC = () => {
                       />
                     </td>
                     <td style={{ ...tableCellStyle, textAlign: 'right', fontWeight: 'bold' }}>
-                      ${item.line_total.toFixed(2)}
+                      ${Number(item.line_total).toFixed(2)}
                     </td>
                     <td style={{ ...tableCellStyle, textAlign: 'center' }}>
                       <button
@@ -732,24 +732,24 @@ const PurchaseOrderFormPage: React.FC = () => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span>Subtotal:</span>
-                <strong>${draft.subtotal.toFixed(2)}</strong>
+                <strong>${Number(draft.subtotal).toFixed(2)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span>Tax:</span>
-                <strong>${draft.tax_amount.toFixed(2)}</strong>
+                <strong>${Number(draft.tax_amount).toFixed(2)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span>Shipping:</span>
-                <strong>${draft.shipping_cost.toFixed(2)}</strong>
+                <strong>${Number(draft.shipping_cost).toFixed(2)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span>Other Charges:</span>
-                <strong>${draft.other_charges.toFixed(2)}</strong>
+                <strong>${Number(draft.other_charges).toFixed(2)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span>Discount:</span>
                 <strong style={{ color: '#dc3545' }}>
-                  -${draft.discount_amount.toFixed(2)}
+                  -${Number(draft.discount_amount).toFixed(2)}
                 </strong>
               </div>
               <div
@@ -763,7 +763,7 @@ const PurchaseOrderFormPage: React.FC = () => {
                 }}
               >
                 <span>Total:</span>
-                <span style={{ color: '#28a745' }}>${draft.total_amount.toFixed(2)}</span>
+                <span style={{ color: '#28a745' }}>${Number(draft.total_amount).toFixed(2)}</span>
               </div>
             </div>
           </div>

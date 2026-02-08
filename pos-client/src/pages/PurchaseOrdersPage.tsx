@@ -507,7 +507,7 @@ const PurchaseOrdersPage: React.FC = () => {
                     <td style={tableCellStyle}>
                       {new Date(po.order_date).toLocaleDateString()}
                     </td>
-                    <td style={tableCellStyle}>${po.total_amount.toFixed(2)}</td>
+                    <td style={tableCellStyle}>${Number(po.total_amount).toFixed(2)}</td>
                     <td style={tableCellStyle}>
                       <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                         <button
