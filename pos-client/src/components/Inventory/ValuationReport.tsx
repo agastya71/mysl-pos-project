@@ -1,12 +1,51 @@
 /**
- * Valuation Report Component
+ * @fileoverview ValuationReport Component - Total inventory value with category breakdown
  *
- * Displays total inventory value and breakdown by category
+ * Financial report showing total inventory value (Σ(price × quantity)) with summary
+ * statistics and detailed category breakdown table.
+ *
+ * @module components/Inventory/ValuationReport
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 3C)
+ * @updated 2026-02-08 (Documentation)
  */
 
 import React from 'react';
 import { useAppSelector } from '../../store/hooks';
 
+/**
+ * ValuationReport Component
+ *
+ * Displays inventory valuation with summary cards and category breakdown table.
+ * Reads data from inventoryReports.valuation Redux slice.
+ *
+ * Summary Cards (top):
+ * - Total Value (large green number)
+ * - Total Items
+ * - Categories Count
+ *
+ * Table Columns:
+ * - Category Name
+ * - Product Count
+ * - Total Quantity
+ * - Total Value (currency formatted)
+ * - % of Total (percentage of overall inventory value)
+ *
+ * Features:
+ * - Loading state
+ * - Error state (red text)
+ * - Empty state ("No valuation data available")
+ * - Responsive grid layout for summary cards
+ * - Sorted by category value (highest first)
+ *
+ * @component
+ * @returns {JSX.Element} Valuation report with summary and table
+ *
+ * @example
+ * <ValuationReport />
+ *
+ * @see {@link InventoryReportsPage} - Parent page
+ */
 const ValuationReport: React.FC = () => {
   const { data, isLoading, error } = useAppSelector(
     (state) => state.inventoryReports.valuation
