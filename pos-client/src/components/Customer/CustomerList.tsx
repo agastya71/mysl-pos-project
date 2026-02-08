@@ -1,3 +1,15 @@
+/**
+ * @fileoverview CustomerList Component - Customer list table with edit functionality
+ *
+ * Table displaying all customers with contact info, stats, and edit button.
+ * Opens CustomerFormModal for editing.
+ *
+ * @module components/Customer/CustomerList
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 2)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
@@ -5,11 +17,60 @@ import { fetchCustomers } from '../../store/slices/customers.slice';
 import { Customer } from '../../types/customer.types';
 import CustomerFormModal from './CustomerFormModal';
 
+/**
+ * CustomerList Component
+ *
+ * Table displaying all customers from Redux state with edit functionality.
+ * Manages CustomerFormModal for editing selected customer.
+ *
+ * Table Columns:
+ * - Customer # (blue, bold, auto-generated CUST-XXXXXX)
+ * - Name (first + last)
+ * - Email (gray, "-" if empty)
+ * - Phone ("-" if empty)
+ * - Total Spent (currency formatted, bold)
+ * - Transactions (count, bold)
+ * - Actions (Edit button)
+ *
+ * Features:
+ * - Loading state (shown only on initial load, items.length = 0)
+ * - Error state (red text with error message)
+ * - Empty state (people icon, "No customers found")
+ * - Row hover effect (light gray background)
+ * - Edit button hover effect (darker blue)
+ * - Edit modal opens when Edit button clicked
+ * - Auto-refreshes list after successful edit
+ *
+ * @component
+ * @returns {JSX.Element} Customer list table or state view
+ *
+ * @example
+ * // Basic usage in CustomersPage
+ * <CustomerList />
+ *
+ * @example
+ * // Edit flow
+ * // 1. User clicks Edit button on row
+ * // 2. CustomerFormModal opens in edit mode
+ * // 3. User updates fields, clicks Update
+ * // 4. API call succeeds, list refreshes
+ * // 5. Modal closes
+ *
+ * @see {@link CustomerFormModal} - Edit modal opened by Edit button
+ * @see {@link CustomersPage} - Parent page
+ */
 const CustomerList: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { items, isLoading, error } = useSelector((state: RootState) => state.customers);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
+  /**
+   * Format amount to USD currency
+   * Example: 1234.56 → "$1,234.56"
+   *
+   * @param {number} amount - Amount to format
+   * @returns {string} Formatted currency
+   */
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -17,6 +78,10 @@ const CustomerList: React.FC = () => {
     }).format(amount);
   };
 
+  /**
+   * Handle successful customer edit
+   * Closes modal, refreshes customer list
+   */
   const handleEditSuccess = () => {
     setEditingCustomer(null);
     dispatch(fetchCustomers());
@@ -106,6 +171,7 @@ const CustomerList: React.FC = () => {
     },
   };
 
+  // Loading state - shown only on initial load (no items yet)
   if (isLoading && items.length === 0) {
     return (
       <div style={styles.container}>
@@ -114,6 +180,7 @@ const CustomerList: React.FC = () => {
     );
   }
 
+  // Error state - shown when API fetch fails
   if (error) {
     return (
       <div style={styles.container}>
@@ -122,6 +189,7 @@ const CustomerList: React.FC = () => {
     );
   }
 
+  // Empty state - shown when no customers found (after successful load)
   if (items.length === 0) {
     return (
       <div style={styles.container}>
@@ -133,10 +201,12 @@ const CustomerList: React.FC = () => {
     );
   }
 
+  // Table view - header + customer rows
   return (
     <>
       <div style={styles.container}>
         <table style={styles.table}>
+          {/* Table header */}
           <thead style={styles.thead}>
             <tr>
               <th style={styles.th}>Customer #</th>
@@ -198,6 +268,7 @@ const CustomerList: React.FC = () => {
         </table>
       </div>
 
+      {/* Edit modal (shown when Edit button clicked) */}
       {editingCustomer && (
         <CustomerFormModal
           customer={editingCustomer}
