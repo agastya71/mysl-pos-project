@@ -33,7 +33,7 @@ const ReorderSuggestionsPage: React.FC = () => {
     dispatch(
       initializeDraft({
         vendor_id: vendorId,
-        order_type: 'standard',
+        order_type: 'purchase',
         expected_delivery_date: '',
         shipping_address: '',
         billing_address: '',

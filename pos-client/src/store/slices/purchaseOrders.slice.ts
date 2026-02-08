@@ -262,9 +262,9 @@ const purchaseOrdersSlice = createSlice({
 
     // Draft management
     initializeDraft(state, action: PayloadAction<Partial<DraftPO>>) {
-      state.draft = {
+      const newDraft: DraftPO = {
         vendor_id: action.payload.vendor_id || '',
-        order_type: action.payload.order_type || 'standard',
+        order_type: action.payload.order_type || 'purchase',
         expected_delivery_date: action.payload.expected_delivery_date || '',
         shipping_address: action.payload.shipping_address || '',
         billing_address: action.payload.billing_address || '',
@@ -279,9 +279,10 @@ const purchaseOrdersSlice = createSlice({
         total_amount: 0,
       };
       if (action.payload.id) {
-        state.draft.id = action.payload.id;
+        newDraft.id = action.payload.id;
       }
-      calculateDraftTotals(state.draft);
+      calculateDraftTotals(newDraft);
+      state.draft = newDraft;
     },
 
     clearDraft(state) {

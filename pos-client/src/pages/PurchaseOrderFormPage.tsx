@@ -732,7 +732,7 @@ const PurchaseOrderFormPage: React.FC = () => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span>Subtotal:</span>
-                <strong>${draft.subtotal_amount.toFixed(2)}</strong>
+                <strong>${draft.subtotal.toFixed(2)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span>Tax:</span>
