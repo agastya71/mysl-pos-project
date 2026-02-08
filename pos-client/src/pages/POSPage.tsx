@@ -32,6 +32,9 @@ export const POSPage: React.FC = () => {
         <h1 style={styles.title}>POS System</h1>
         <div style={styles.userInfo}>
           <span>Welcome, {user?.full_name}</span>
+          <button onClick={() => navigate('/customers')} style={styles.historyButton}>
+            👥 Customers
+          </button>
           <button onClick={() => navigate('/pos/history')} style={styles.historyButton}>
             📋 History
           </button>

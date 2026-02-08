@@ -11,13 +11,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
   const reduxSearchQuery = useAppSelector((state) => state.products.searchQuery);
   const [localQuery, setLocalQuery] = useState('');
 
-  // Sync local query with Redux state (for external clears)
-  useEffect(() => {
-    if (reduxSearchQuery === '' && localQuery !== '') {
-      setLocalQuery('');
-    }
-  }, [reduxSearchQuery, localQuery]);
-
+  // Debounced search effect
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localQuery.trim()) {
@@ -34,6 +28,18 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
     return () => clearTimeout(timer);
   }, [localQuery, dispatch, onSearch]);
 
+  // Sync with external Redux clears (only clear local if Redux is cleared)
+  // DO NOT include localQuery in deps - would cause infinite loop/clearing on type
+  useEffect(() => {
+    if (reduxSearchQuery === '' && localQuery !== '') {
+      setLocalQuery('');
+    }
+  }, [reduxSearchQuery]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalQuery(e.target.value);
+  };
+
   const handleClear = () => {
     setLocalQuery('');
     dispatch(setSearchQuery(''));
@@ -46,8 +52,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
         type="text"
         placeholder="Search products by name, SKU, or barcode..."
         value={localQuery}
-        onChange={(e) => setLocalQuery(e.target.value)}
+        onChange={handleChange}
         style={styles.input}
+        autoComplete="off"
+        autoFocus
       />
       {localQuery && (
         <button onClick={handleClear} style={styles.clearButton}>
@@ -66,11 +74,14 @@ const styles = {
   input: {
     width: '100%',
     padding: '0.75rem 2.5rem 0.75rem 1rem',
-    fontSize: '1rem',
+    fontSize: '16px',
     border: '2px solid #e0e0e0',
     borderRadius: '8px',
     outline: 'none',
-    transition: 'border-color 0.2s',
+    backgroundColor: '#ffffff',
+    color: '#000000',
+    boxSizing: 'border-box' as const,
+    fontFamily: 'system-ui, -apple-system, sans-serif',
   },
   clearButton: {
     position: 'absolute' as const,

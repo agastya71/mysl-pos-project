@@ -11,6 +11,8 @@ import { clearSearchResults, fetchProducts } from '../../store/slices/products.s
 import PaymentMethodSelector from './PaymentMethodSelector';
 import CashPaymentInput from './CashPaymentInput';
 import PaymentList from './PaymentList';
+import CustomerSelector from '../Customer/CustomerSelector';
+import { CustomerSearchResult } from '../../types/customer.types';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -24,6 +26,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
   const auth = useAppSelector((state) => state.auth);
   const [selectedMethod, setSelectedMethod] = useState<'cash' | 'credit_card' | 'debit_card' | 'check'>('cash');
   const [showReceipt, setShowReceipt] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerSearchResult | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -62,7 +65,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
       // Get terminal_id from user (assuming it's stored in auth state)
       const terminal_id = auth.user?.assigned_terminal_id;
       if (terminal_id) {
-        await dispatch(completeCheckout({ terminal_id }));
+        await dispatch(completeCheckout({
+          terminal_id,
+          customer_id: selectedCustomer?.id,
+        }));
       } else {
         alert('Terminal ID not found. Please contact administrator.');
       }
@@ -72,6 +78,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
   const handleClose = () => {
     dispatch(clearCheckout());
     setShowReceipt(false);
+    setSelectedCustomer(null);
     onClose();
   };
 
@@ -92,6 +99,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
               <p style={styles.transactionNumber}>
                 Transaction #{checkout.completedTransaction.transaction_number}
               </p>
+              {selectedCustomer && (
+                <p style={styles.customerInfo}>
+                  Customer: {selectedCustomer.full_name} ({selectedCustomer.customer_number})
+                </p>
+              )}
             </div>
 
             <div style={styles.receiptDetails}>
@@ -131,6 +143,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
         {checkout.error && <div style={styles.error}>{checkout.error}</div>}
 
         <div style={styles.content}>
+          <CustomerSelector
+            selectedCustomerId={selectedCustomer?.id || null}
+            onSelect={setSelectedCustomer}
+          />
+
           <div style={styles.summary}>
             <div style={styles.summaryRow}>
               <span>Total:</span>
@@ -294,6 +311,11 @@ const styles = {
   transactionNumber: {
     margin: 0,
     fontSize: '1rem',
+    color: '#666',
+  },
+  customerInfo: {
+    margin: '0.5rem 0 0 0',
+    fontSize: '0.9rem',
     color: '#666',
   },
   receiptDetails: {
