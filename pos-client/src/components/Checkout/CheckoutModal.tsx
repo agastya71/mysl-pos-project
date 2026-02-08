@@ -1,3 +1,15 @@
+/**
+ * @fileoverview CheckoutModal Component - Complete checkout flow modal
+ *
+ * Full-featured checkout modal managing payments, customer selection, and transaction completion.
+ * Supports multiple payment methods, calculates change, shows receipt, and handles errors.
+ *
+ * @module components/Checkout/CheckoutModal
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 1B)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -14,11 +26,67 @@ import PaymentList from './PaymentList';
 import CustomerSelector from '../Customer/CustomerSelector';
 import { CustomerSearchResult } from '../../types/customer.types';
 
+/**
+ * CheckoutModal component props
+ *
+ * @interface CheckoutModalProps
+ * @property {boolean} isOpen - Whether modal is visible
+ * @property {function} onClose - Callback when modal closes
+ */
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+/**
+ * CheckoutModal Component
+ *
+ * Full-screen modal managing complete checkout flow for POS transactions.
+ * Handles payment collection, customer assignment, transaction completion, and receipt display.
+ *
+ * Features:
+ * - Multi-step checkout flow (payment → complete → receipt)
+ * - Customer selection (optional)
+ * - Multiple payment methods (cash MVP, others placeholders)
+ * - Real-time amount due calculation
+ * - Payment list with remove capability
+ * - Complete Transaction button (enabled when paid in full)
+ * - Success receipt with transaction number
+ * - New Transaction flow (clears cart, refreshes products)
+ * - Click outside to close (with confirmation)
+ * - Error display for failed transactions
+ *
+ * State Management:
+ * - Uses checkout slice for payments, amount due, transaction completion
+ * - Uses cart slice for transaction totals
+ * - Uses auth slice for terminal_id
+ *
+ * @component
+ * @param {CheckoutModalProps} props - Component props
+ * @returns {JSX.Element | null} Checkout modal or null when closed
+ *
+ * @example
+ * // Basic usage in POSPage
+ * const [showCheckout, setShowCheckout] = useState(false);
+ * <CheckoutModal
+ *   isOpen={showCheckout}
+ *   onClose={() => setShowCheckout(false)}
+ * />
+ *
+ * @example
+ * // Payment flow
+ * // 1. Modal opens with cart total
+ * // 2. Optionally select customer
+ * // 3. Add payments until amount due = 0
+ * // 4. Click Complete Transaction
+ * // 5. Receipt shown with transaction number
+ * // 6. Click New Transaction to clear and start fresh
+ *
+ * @see {@link PaymentMethodSelector} - Payment method buttons
+ * @see {@link CashPaymentInput} - Cash payment form
+ * @see {@link PaymentList} - List of added payments
+ * @see {@link CustomerSelector} - Customer search and selection
+ */
 const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
   const dispatch = useAppDispatch();
   const cart = useAppSelector((state) => state.cart);
@@ -28,6 +96,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSearchResult | null>(null);
 
+  /**
+   * Calculate and update amount due when modal opens or totals change
+   * Ensures amount due never goes negative
+   */
   useEffect(() => {
     if (isOpen) {
       const due = Math.max(0, cart.total_amount - checkout.totalPaid);
@@ -35,6 +107,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen, cart.total_amount, checkout.totalPaid, dispatch]);
 
+  /**
+   * Show receipt automatically when transaction completes successfully
+   */
   useEffect(() => {
     if (checkout.completedTransaction) {
       setShowReceipt(true);
@@ -43,6 +118,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  /**
+   * Handle adding cash payment
+   * Calculates change automatically (change = received - amount)
+   *
+   * @param {number} cashReceived - Cash received from customer
+   * @param {number} amount - Payment amount to apply (may be less than received)
+   */
   const handleAddCashPayment = (cashReceived: number, amount: number) => {
     dispatch(
       addPayment({
@@ -56,13 +138,26 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
     );
   };
 
+  /**
+   * Handle removing payment from list
+   * Recalculates amount due automatically via Redux
+   *
+   * @param {string} id - Payment ID (UUID)
+   */
   const handleRemovePayment = (id: string) => {
     dispatch(removePayment(id));
   };
 
+  /**
+   * Handle completing transaction
+   * Validates payment complete (amount due ≤ 0.01) and terminal assigned
+   * Creates transaction via API, shows receipt on success
+   *
+   * @async
+   */
   const handleCompleteTransaction = async () => {
     if (checkout.amountDue <= 0.01) {
-      // Get terminal_id from user (assuming it's stored in auth state)
+      // Get terminal_id from authenticated user
       const terminal_id = auth.user?.assigned_terminal_id;
       if (terminal_id) {
         await dispatch(completeCheckout({
@@ -75,6 +170,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  /**
+   * Handle closing modal
+   * Clears checkout state, resets receipt/customer, calls parent onClose
+   */
   const handleClose = () => {
     dispatch(clearCheckout());
     setShowReceipt(false);
@@ -82,6 +181,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
     onClose();
   };
 
+  /**
+   * Handle starting new transaction after completion
+   * Refreshes product list (to show updated stock), clears checkout, closes modal
+   */
   const handleNewTransaction = () => {
     // Clear search and refresh product list to show updated stock
     dispatch(clearSearchResults());
@@ -89,11 +192,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
     handleClose();
   };
 
+  // Receipt view - shown after successful transaction completion
   if (showReceipt && checkout.completedTransaction) {
     return (
       <div style={styles.overlay} onClick={(e) => e.target === e.currentTarget && handleClose()}>
         <div style={styles.modal}>
           <div style={styles.receipt}>
+            {/* Receipt header: success message, transaction number, customer info */}
             <div style={styles.receiptHeader}>
               <h2 style={styles.receiptTitle}>✓ Transaction Complete</h2>
               <p style={styles.transactionNumber}>
@@ -106,6 +211,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
               )}
             </div>
 
+            {/* Receipt details: financial breakdown */}
             <div style={styles.receiptDetails}>
               <div style={styles.receiptRow}>
                 <span>Subtotal:</span>
@@ -121,6 +227,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {/* New Transaction button - clears and closes */}
             <button onClick={handleNewTransaction} style={styles.newTransactionButton}>
               New Transaction
             </button>
@@ -130,9 +237,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
     );
   }
 
+  // Checkout view - main payment collection interface
   return (
     <div style={styles.overlay} onClick={(e) => e.target === e.currentTarget && handleClose()}>
       <div style={styles.modal}>
+        {/* Header: title and close button */}
         <div style={styles.header}>
           <h2 style={styles.title}>Checkout</h2>
           <button onClick={handleClose} style={styles.closeButton}>
@@ -140,14 +249,17 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* Error banner (shown if transaction fails) */}
         {checkout.error && <div style={styles.error}>{checkout.error}</div>}
 
         <div style={styles.content}>
+          {/* Customer selection (optional) */}
           <CustomerSelector
             selectedCustomerId={selectedCustomer?.id || null}
             onSelect={setSelectedCustomer}
           />
 
+          {/* Payment summary: Total, Paid, Amount Due */}
           <div style={styles.summary}>
             <div style={styles.summaryRow}>
               <span>Total:</span>
@@ -169,8 +281,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
+          {/* List of added payments (with remove buttons) */}
           <PaymentList payments={checkout.payments} onRemove={handleRemovePayment} />
 
+          {/* Payment input - only show if amount due > 0 */}
           {checkout.amountDue > 0.01 && (
             <>
               <PaymentMethodSelector selectedMethod={selectedMethod} onSelect={setSelectedMethod} />
@@ -181,6 +295,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
             </>
           )}
 
+          {/* Complete Transaction button (enabled when paid in full) */}
           <button
             onClick={handleCompleteTransaction}
             disabled={checkout.amountDue > 0.01 || checkout.isProcessing}
