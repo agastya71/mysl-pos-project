@@ -62,3 +62,17 @@ export interface ApiResponse<T = any> {
     details?: any;
   };
 }
+
+/**
+ * Paginated Response wrapper
+ * Used for list endpoints that return paginated results
+ */
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}

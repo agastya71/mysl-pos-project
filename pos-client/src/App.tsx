@@ -10,6 +10,10 @@ import { CategoriesPage } from './pages/CategoriesPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { InventoryHistoryPage } from './pages/InventoryHistoryPage';
 import InventoryReportsPage from './pages/InventoryReportsPage';
+import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
+import PurchaseOrderDetailsPage from './pages/PurchaseOrderDetailsPage';
+import PurchaseOrderFormPage from './pages/PurchaseOrderFormPage';
+import ReorderSuggestionsPage from './pages/ReorderSuggestionsPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -74,6 +78,46 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <InventoryReportsPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/purchase-orders"
+          element={
+            <PrivateRoute>
+              <PurchaseOrdersPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/purchase-orders/new"
+          element={
+            <PrivateRoute>
+              <PurchaseOrderFormPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/purchase-orders/reorder-suggestions"
+          element={
+            <PrivateRoute>
+              <ReorderSuggestionsPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/purchase-orders/:id"
+          element={
+            <PrivateRoute>
+              <PurchaseOrderDetailsPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/purchase-orders/:id/edit"
+          element={
+            <PrivateRoute>
+              <PurchaseOrderFormPage />
             </PrivateRoute>
           }
         />
