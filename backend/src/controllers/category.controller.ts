@@ -39,7 +39,7 @@ export const createCategory = async (
 ): Promise<void> => {
   try {
     const validatedData = createCategorySchema.parse(req.body);
-    const category = await categoryService.createCategory(validatedData);
+    const category = await categoryService.createCategory(validatedData as any);
 
     res.status(201).json({
       success: true,

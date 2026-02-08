@@ -4,7 +4,7 @@ import { testRedisConnection } from '../config/redis';
 import { ApiResponse, HealthCheckResponse } from '../types/api.types';
 
 export class HealthController {
-  async check(req: Request, res: Response<ApiResponse<HealthCheckResponse>>) {
+  async check(_req: Request, res: Response<ApiResponse<HealthCheckResponse>>) {
     const dbHealthy = await testConnection();
     const redisHealthy = await testRedisConnection();
 

@@ -74,7 +74,7 @@ export class ProductController {
       throw new AppError(400, 'VALIDATION_ERROR', 'Invalid request data', validation.error.errors);
     }
 
-    const product = await this.productService.createProduct(validation.data);
+    const product = await this.productService.createProduct(validation.data as any);
 
     res.status(201).json({
       success: true,

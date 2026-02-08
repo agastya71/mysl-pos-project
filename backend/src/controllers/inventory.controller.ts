@@ -45,7 +45,7 @@ export const createAdjustment = async (
     const validatedData = createAdjustmentSchema.parse(req.body);
     const userId = req.user!.userId;
 
-    const adjustment = await inventoryService.createAdjustment(userId, validatedData);
+    const adjustment = await inventoryService.createAdjustment(userId, validatedData as any);
 
     res.status(201).json({
       success: true,

@@ -47,6 +47,10 @@ describe('Customer API Integration Tests', () => {
     jest.clearAllMocks();
   });
 
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('POST /api/v1/customers', () => {
     it('should create customer with full details', async () => {
       const requestBody = {

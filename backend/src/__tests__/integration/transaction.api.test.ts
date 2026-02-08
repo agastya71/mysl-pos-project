@@ -55,6 +55,10 @@ describe('Transaction API Integration Tests', () => {
     jest.clearAllMocks();
   });
 
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('POST /api/v1/transactions', () => {
     it('should create a transaction successfully', async () => {
       const requestBody = {

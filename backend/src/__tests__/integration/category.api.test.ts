@@ -3,16 +3,18 @@
  */
 
 import request from 'supertest';
-import app from '../../app';
+import { createApp } from '../../app';
 import { pool } from '../../config/database';
 
 jest.mock('../../utils/logger');
 
 describe('Category API Integration Tests', () => {
+  let app: any;
   let authToken: string;
   let createdCategoryId: string;
 
   beforeAll(async () => {
+    app = createApp();
     // Login to get auth token
     const loginResponse = await request(app)
       .post('/api/v1/auth/login')

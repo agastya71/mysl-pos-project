@@ -81,7 +81,7 @@ export class TransactionController {
     // Get cashier_id from authenticated user
     const cashier_id = req.user!.userId;
 
-    const transaction = await this.transactionService.createTransaction(cashier_id, validation.data);
+    const transaction = await this.transactionService.createTransaction(cashier_id, validation.data as any);
 
     res.status(201).json({
       success: true,
@@ -141,7 +141,7 @@ export class TransactionController {
     }
 
     const user_id = req.user!.userId;
-    const transaction = await this.transactionService.voidTransaction(id, user_id, validation.data);
+    const transaction = await this.transactionService.voidTransaction(id, user_id, validation.data as any);
 
     res.status(200).json({
       success: true,

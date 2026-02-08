@@ -1,5 +1,6 @@
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
+import { SignOptions } from 'jsonwebtoken';
 import { pool } from '../config/database';
 import redisClient from '../config/redis';
 import { AppError } from '../middleware/error.middleware';
@@ -109,11 +110,11 @@ export class AuthService {
   private async generateTokens(payload: JwtPayload): Promise<AuthTokens> {
     const accessToken = jwt.sign(payload, JWT_ACCESS_SECRET, {
       expiresIn: JWT_ACCESS_EXPIRY,
-    });
+    } as any);
 
     const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
       expiresIn: JWT_REFRESH_EXPIRY,
-    });
+    } as any);
 
     return { accessToken, refreshToken };
   }
