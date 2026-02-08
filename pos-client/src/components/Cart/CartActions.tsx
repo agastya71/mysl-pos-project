@@ -1,11 +1,48 @@
+/**
+ * @fileoverview CartActions Component - Cart action buttons (Clear and Checkout)
+ *
+ * Provides Clear Cart and Checkout buttons for cart management.
+ * Both buttons disabled when cart is empty.
+ *
+ * @module components/Cart/CartActions
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 1B)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React from 'react';
 
+/**
+ * CartActions component props
+ *
+ * @interface CartActionsProps
+ * @property {boolean} hasItems - Whether cart has items (enables/disables buttons)
+ * @property {function} onClearCart - Callback to clear all cart items
+ * @property {function} onCheckout - Callback to initiate checkout flow
+ */
 interface CartActionsProps {
   hasItems: boolean;
   onClearCart: () => void;
   onCheckout: () => void;
 }
 
+/**
+ * CartActions Component
+ *
+ * Action buttons for cart: Clear Cart (left) and Checkout (right).
+ * Both buttons disabled when cart empty (hasItems = false).
+ *
+ * @component
+ * @param {CartActionsProps} props - Component props
+ * @returns {JSX.Element} Cart action buttons
+ *
+ * @example
+ * <CartActions
+ *   hasItems={cartItems.length > 0}
+ *   onClearCart={handleClearCart}
+ *   onCheckout={handleCheckout}
+ * />
+ */
 const CartActions: React.FC<CartActionsProps> = ({ hasItems, onClearCart, onCheckout }) => {
   return (
     <div style={styles.container}>
