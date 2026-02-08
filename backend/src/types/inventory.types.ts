@@ -42,6 +42,68 @@ export interface GetAdjustmentsQuery {
   limit?: number;
 }
 
+// Report Types
+
+export interface LowStockProduct {
+  id: string;
+  product_number: string;
+  name: string;
+  sku: string;
+  quantity_in_stock: number;
+  reorder_level: number;
+  reorder_quantity: number;
+  category_name?: string;
+  stock_value: number;
+}
+
+export interface OutOfStockProduct {
+  id: string;
+  product_number: string;
+  name: string;
+  sku: string;
+  reorder_quantity: number;
+  category_name?: string;
+  last_sale_date?: Date;
+}
+
+export interface CategoryValuation {
+  category_id: string;
+  category_name: string;
+  product_count: number;
+  total_quantity: number;
+  total_value: number;
+}
+
+export interface InventoryValuation {
+  total_value: number;
+  total_items: number;
+  by_category: CategoryValuation[];
+}
+
+export interface MovementReportItem {
+  product_id: string;
+  product_number: string;
+  product_name: string;
+  sku: string;
+  category_name?: string;
+  opening_stock: number;
+  sales_quantity: number;
+  adjustment_quantity: number;
+  closing_stock: number;
+  net_change: number;
+}
+
+export interface CategorySummary {
+  category_id: string;
+  category_name: string;
+  product_count: number;
+  total_quantity: number;
+  total_value: number;
+  average_value_per_item: number;
+  low_stock_count: number;
+  out_of_stock_count: number;
+}
+
 export interface AdjustmentWithProduct extends InventoryAdjustment {
   product: {
     id: string;

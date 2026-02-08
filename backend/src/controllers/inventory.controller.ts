@@ -110,7 +110,7 @@ export const getProductHistory = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const history = await inventoryService.getProductHistory(req.params.productId);
+    const history = await inventoryService.getProductInventoryHistory(req.params.productId);
 
     res.json({
       success: true,
