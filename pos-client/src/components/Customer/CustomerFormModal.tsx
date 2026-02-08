@@ -1,15 +1,94 @@
+/**
+ * @fileoverview CustomerFormModal Component - Create/edit customer form modal
+ *
+ * Comprehensive form modal for creating new customers or editing existing ones.
+ * Supports full customer data including name, contact info, and address.
+ *
+ * @module components/Customer/CustomerFormModal
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 2)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { createCustomer, updateCustomer } from '../../store/slices/customers.slice';
 import { Customer } from '../../types/customer.types';
 
+/**
+ * CustomerFormModal component props
+ *
+ * @interface CustomerFormModalProps
+ * @property {Customer} [customer] - Customer to edit (undefined for create mode)
+ * @property {function} onClose - Callback when modal closes (Cancel or success)
+ * @property {function} onSuccess - Callback when save succeeds (before close)
+ */
 interface CustomerFormModalProps {
   customer?: Customer;
   onClose: () => void;
   onSuccess: () => void;
 }
 
+/**
+ * CustomerFormModal Component
+ *
+ * Full-featured customer form modal supporting create and edit modes.
+ * Includes contact info, full address fields, validation, and error handling.
+ *
+ * Form Fields:
+ * - First Name * (required)
+ * - Last Name * (required)
+ * - Email (optional, validated)
+ * - Phone (optional)
+ * - Address Line 1 (optional)
+ * - Address Line 2 (optional)
+ * - City / State (2-column grid, optional)
+ * - Postal Code / Country (2-column grid, optional, country defaults to "USA")
+ *
+ * Features:
+ * - Dual mode: create (no customer prop) or edit (with customer prop)
+ * - Title changes based on mode ("New Customer" vs "Edit Customer")
+ * - Pre-fills form data in edit mode
+ * - Client-side validation (required fields, email format)
+ * - Trimmed values on submit (empty strings become undefined)
+ * - Loading state ("Saving..." button text)
+ * - Error display (red text below form)
+ * - Cancel and Save buttons
+ * - Click overlay to close (cancel)
+ * - Form submission via Enter key
+ *
+ * Validation:
+ * - First name and last name required (non-empty after trim)
+ * - Email format validated if provided (regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+ *
+ * @component
+ * @param {CustomerFormModalProps} props - Component props
+ * @returns {JSX.Element} Customer form modal
+ *
+ * @example
+ * // Create mode
+ * const [showCreate, setShowCreate] = useState(false);
+ * {showCreate && (
+ *   <CustomerFormModal
+ *     onClose={() => setShowCreate(false)}
+ *     onSuccess={() => { fetchCustomers(); setShowCreate(false); }}
+ *   />
+ * )}
+ *
+ * @example
+ * // Edit mode
+ * const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
+ * {editCustomer && (
+ *   <CustomerFormModal
+ *     customer={editCustomer}
+ *     onClose={() => setEditCustomer(null)}
+ *     onSuccess={() => { fetchCustomers(); setEditCustomer(null); }}
+ *   />
+ * )}
+ *
+ * @see {@link CustomersPage} - Parent page using this modal
+ */
 const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ customer, onClose, onSuccess }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [formData, setFormData] = useState({
@@ -27,8 +106,15 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ customer, onClose
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Edit mode if customer prop provided
   const isEdit = !!customer;
 
+  /**
+   * Handle input field change
+   * Updates formData state with new value
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Change event
+   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -36,16 +122,24 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ customer, onClose
     });
   };
 
+  /**
+   * Handle form submission
+   * Validates, trims values, dispatches create/update, calls onSuccess
+   *
+   * @async
+   * @param {React.FormEvent} e - Form submit event
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validation
+    // Validation: required fields
     if (!formData.first_name.trim() || !formData.last_name.trim()) {
       setError('First name and last name are required');
       return;
     }
 
+    // Validation: email format (if provided)
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       setError('Invalid email format');
       return;
@@ -55,6 +149,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ customer, onClose
 
     try {
       if (isEdit) {
+        // Edit mode: update existing customer
         await dispatch(
           updateCustomer({
             id: customer.id,
@@ -73,6 +168,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ customer, onClose
           })
         ).unwrap();
       } else {
+        // Create mode: create new customer
         await dispatch(
           createCustomer({
             first_name: formData.first_name.trim(),
@@ -189,13 +285,16 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ customer, onClose
 
   return (
     <div style={styles.overlay} onClick={onClose}>
+      {/* Modal content (click does NOT close) */}
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        {/* Header: title changes based on mode */}
         <div style={styles.header}>
           <div style={styles.title}>
             {isEdit ? 'Edit Customer' : 'New Customer'}
           </div>
         </div>
 
+        {/* Customer form with all fields */}
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.field}>
             <label style={styles.label}>
