@@ -11,7 +11,6 @@ import {
   fetchLowStockReport,
   fetchOutOfStockReport,
   fetchValuationReport,
-  fetchMovementReport,
   fetchCategorySummary,
 } from '../store/slices/inventory-reports.slice';
 import LowStockReport from '../components/Inventory/LowStockReport';
