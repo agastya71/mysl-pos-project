@@ -182,6 +182,22 @@ const PurchaseOrdersPage: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
+            onClick={() => navigate('/vendors')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#5a6268')}
+            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#6c757d')}
+          >
+            🏢 Manage Vendors
+          </button>
+          <button
             onClick={handleReorderSuggestions}
             style={{
               padding: '10px 20px',

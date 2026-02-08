@@ -9,6 +9,7 @@ import categoriesReducer from './slices/categories.slice';
 import inventoryReducer from './slices/inventory.slice';
 import inventoryReportsReducer from './slices/inventory-reports.slice';
 import purchaseOrdersReducer from './slices/purchaseOrders.slice';
+import vendorsReducer from './slices/vendors.slice';
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     inventory: inventoryReducer,
     inventoryReports: inventoryReportsReducer,
     purchaseOrders: purchaseOrdersReducer,
+    vendors: vendorsReducer,
   },
 });
 
