@@ -92,7 +92,7 @@ export class CustomerService {
     );
 
     if (result.rowCount === 0) {
-      throw new AppError('Customer not found', 404);
+      throw new AppError(404, 'CUSTOMER_NOT_FOUND', 'Customer not found');
     }
 
     return result.rows[0];
@@ -109,7 +109,7 @@ export class CustomerService {
         [input.email]
       );
       if (existing.rowCount && existing.rowCount > 0) {
-        throw new AppError('Email already exists', 400);
+        throw new AppError(400, 'DUPLICATE_EMAIL', 'Email already exists');
       }
     }
 
@@ -155,7 +155,7 @@ export class CustomerService {
         [input.email, id]
       );
       if (existing.rowCount && existing.rowCount > 0) {
-        throw new AppError('Email already exists', 400);
+        throw new AppError(400, 'DUPLICATE_EMAIL', 'Email already exists');
       }
     }
 
@@ -231,7 +231,7 @@ export class CustomerService {
     }
 
     if (updates.length === 0) {
-      throw new AppError('No fields to update', 400);
+      throw new AppError(400, 'NO_FIELDS_TO_UPDATE', 'No fields to update');
     }
 
     updates.push(`updated_at = CURRENT_TIMESTAMP`);
@@ -264,7 +264,7 @@ export class CustomerService {
     );
 
     if (result.rowCount === 0) {
-      throw new AppError('Customer not found', 404);
+      throw new AppError(404, 'CUSTOMER_NOT_FOUND', 'Customer not found');
     }
   }
 

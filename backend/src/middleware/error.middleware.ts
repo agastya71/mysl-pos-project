@@ -48,7 +48,7 @@ export const errorHandler = (
   });
 };
 
-export const notFoundHandler = (req: Request, res: Response<ApiResponse>) => {
+export const notFoundHandler = (_req: Request, res: Response<ApiResponse>) => {
   res.status(404).json({
     success: false,
     error: {
