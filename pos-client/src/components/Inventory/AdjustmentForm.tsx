@@ -1,7 +1,13 @@
 /**
- * Adjustment Form Component
+ * @fileoverview AdjustmentForm Component - Inventory adjustment creation form
  *
- * Modal form for creating inventory adjustments
+ * Modal form for manually adjusting product inventory with reason tracking.
+ * Supports various adjustment types (correction, damage, theft, found, initial).
+ *
+ * @module components/Inventory/AdjustmentForm
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 3B)
+ * @updated 2026-02-08 (Documentation)
  */
 
 import React, { useState, CSSProperties } from 'react';
@@ -9,6 +15,16 @@ import { useAppDispatch } from '../../store/hooks';
 import { createAdjustment } from '../../store/slices/inventory.slice';
 import { AdjustmentType } from '../../types/inventory.types';
 
+/**
+ * AdjustmentForm component props
+ *
+ * @interface AdjustmentFormProps
+ * @property {string} productId - Product ID to adjust
+ * @property {string} productName - Product name (for display)
+ * @property {number} currentQuantity - Current inventory quantity
+ * @property {function} onClose - Callback when modal closes
+ * @property {function} onSuccess - Callback when adjustment created successfully
+ */
 interface AdjustmentFormProps {
   productId: string;
   productName: string;
@@ -17,6 +33,54 @@ interface AdjustmentFormProps {
   onSuccess: () => void;
 }
 
+/**
+ * AdjustmentForm Component
+ *
+ * Modal form for creating manual inventory adjustments with comprehensive validation.
+ * Shows product info, calculates new quantity preview, requires reason.
+ *
+ * Form Fields:
+ * - Product Info (read-only): Product name, current quantity
+ * - Adjustment Type * (dropdown): correction, damage, theft, found, initial
+ * - Quantity Change * (number): positive to add, negative to subtract
+ * - Reason * (textarea): required, max 500 chars, char counter
+ * - Additional Notes (textarea): optional, max 1000 chars
+ *
+ * Features:
+ * - Real-time new quantity preview (current → new)
+ * - Prevents negative inventory (submit button disabled, error shown)
+ * - Quantity change cannot be zero (validation)
+ * - Reason required (trimmed, non-empty)
+ * - Character counters on textareas
+ * - Loading state ("Creating..." button text)
+ * - Error display (red box)
+ *
+ * Adjustment Types:
+ * - Correction: Fix counting error
+ * - Damage: Damaged or expired items
+ * - Theft: Shrinkage from theft
+ * - Found: Discovered stock
+ * - Initial: Set initial stock
+ *
+ * @component
+ * @param {AdjustmentFormProps} props - Component props
+ * @returns {JSX.Element} Adjustment form modal
+ *
+ * @example
+ * // Basic usage in InventoryPage
+ * const [adjusting, setAdjusting] = useState<Product | null>(null);
+ * {adjusting && (
+ *   <AdjustmentForm
+ *     productId={adjusting.id}
+ *     productName={adjusting.name}
+ *     currentQuantity={adjusting.quantity_in_stock}
+ *     onClose={() => setAdjusting(null)}
+ *     onSuccess={() => { fetchProducts(); setAdjusting(null); }}
+ *   />
+ * )}
+ *
+ * @see {@link InventoryPage} - Parent page using this form
+ */
 export const AdjustmentForm: React.FC<AdjustmentFormProps> = ({
   productId,
   productName,
@@ -33,8 +97,16 @@ export const AdjustmentForm: React.FC<AdjustmentFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Calculate new quantity for preview
   const newQuantity = currentQuantity + parseInt(quantityChange || '0');
 
+  /**
+   * Handle form submission
+   * Validates, creates adjustment, calls onSuccess and closes
+   *
+   * @async
+   * @param {React.FormEvent} e - Form submit event
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
