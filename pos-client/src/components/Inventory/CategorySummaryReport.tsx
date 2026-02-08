@@ -1,12 +1,47 @@
 /**
- * Category Summary Report Component
+ * @fileoverview CategorySummaryReport Component - Inventory summary grouped by category
  *
- * Displays stock levels and statistics by category
+ * Table report showing aggregated inventory statistics per category.
+ * Provides high-level overview of stock health by product category.
+ *
+ * @module components/Inventory/CategorySummaryReport
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 3C)
+ * @updated 2026-02-08 (Documentation)
  */
 
 import React from 'react';
 import { useAppSelector } from '../../store/hooks';
 
+/**
+ * CategorySummaryReport Component
+ *
+ * Displays inventory summary grouped by category in table format.
+ * Reads data from inventoryReports.categorySummary Redux slice.
+ *
+ * Table Columns:
+ * - Category Name
+ * - Product Count
+ * - Total Stock
+ * - Low Stock Count (yellow badge if > 0, green if 0)
+ * - Out of Stock Count (badge)
+ * - Total Value (currency formatted)
+ *
+ * Features:
+ * - Loading state
+ * - Error state (red text)
+ * - Empty state ("No categories found")
+ * - Color-coded badges for stock alerts
+ * - Sorted by category name
+ *
+ * @component
+ * @returns {JSX.Element} Category summary report table or state view
+ *
+ * @example
+ * <CategorySummaryReport />
+ *
+ * @see {@link InventoryReportsPage} - Parent page
+ */
 const CategorySummaryReport: React.FC = () => {
   const { data, isLoading, error } = useAppSelector(
     (state) => state.inventoryReports.categorySummary
