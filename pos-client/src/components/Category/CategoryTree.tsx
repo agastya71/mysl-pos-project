@@ -1,12 +1,52 @@
+/**
+ * @fileoverview CategoryTree Component - Hierarchical category tree view
+ *
+ * Recursive tree component displaying categories with expand/collapse, edit, and delete.
+ * Shows category number, name, description, product count, and actions.
+ *
+ * @module components/Category/CategoryTree
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 3A)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React, { useState, CSSProperties } from 'react';
 import { CategoryWithChildren } from '../../types/category.types';
 
+/**
+ * CategoryTree component props
+ *
+ * @interface CategoryTreeProps
+ * @property {CategoryWithChildren[]} categories - Root category tree
+ * @property {function} onEdit - Callback when Edit button clicked
+ * @property {function} onDelete - Callback when Delete button clicked
+ */
 interface CategoryTreeProps {
   categories: CategoryWithChildren[];
   onEdit: (category: CategoryWithChildren) => void;
   onDelete: (category: CategoryWithChildren) => void;
 }
 
+/**
+ * CategoryTree Component
+ *
+ * Root container for hierarchical category tree. Renders CategoryTreeNode
+ * components recursively for each root category.
+ *
+ * @component
+ * @param {CategoryTreeProps} props - Component props
+ * @returns {JSX.Element} Category tree container
+ *
+ * @example
+ * <CategoryTree
+ *   categories={categoryTree}
+ *   onEdit={(cat) => setEditing(cat)}
+ *   onDelete={(cat) => confirmDelete(cat)}
+ * />
+ *
+ * @see {@link CategoryTreeNode} - Recursive node component
+ * @see {@link CategoriesPage} - Parent page
+ */
 export const CategoryTree: React.FC<CategoryTreeProps> = ({
   categories,
   onEdit,
@@ -26,6 +66,15 @@ export const CategoryTree: React.FC<CategoryTreeProps> = ({
   );
 };
 
+/**
+ * CategoryTreeNode component props
+ *
+ * @interface CategoryTreeNodeProps
+ * @property {CategoryWithChildren} category - Category node data
+ * @property {number} [depth] - Depth level (for indentation, default 0)
+ * @property {function} onEdit - Callback when Edit button clicked
+ * @property {function} onDelete - Callback when Delete button clicked
+ */
 interface CategoryTreeNodeProps {
   category: CategoryWithChildren;
   depth?: number;
@@ -33,6 +82,42 @@ interface CategoryTreeNodeProps {
   onDelete: (category: CategoryWithChildren) => void;
 }
 
+/**
+ * CategoryTreeNode Component (Internal)
+ *
+ * Recursive tree node displaying single category with children.
+ * Shows expand/collapse button (if has children), category info, and actions.
+ *
+ * Display Elements:
+ * - Expand/Collapse button (▼/▶) or spacer if no children
+ * - Category number (blue pill badge, monospace font)
+ * - Category name (bold)
+ * - Description (gray, italic, optional)
+ * - Product count (gray pill badge)
+ * - Edit button (pencil emoji)
+ * - Delete button (trash emoji, disabled if has products or children)
+ *
+ * Features:
+ * - Recursive rendering of children (indented 24px per level)
+ * - Expand/collapse state (default: expanded)
+ * - Delete disabled if: product_count > 0 OR has children
+ * - Hover effects on buttons
+ *
+ * @component
+ * @param {CategoryTreeNodeProps} props - Component props
+ * @returns {JSX.Element} Category tree node
+ *
+ * @example
+ * // Recursive usage (internal)
+ * <CategoryTreeNode
+ *   category={category}
+ *   depth={1}
+ *   onEdit={onEdit}
+ *   onDelete={onDelete}
+ * />
+ *
+ * @see {@link CategoryTree} - Root tree component
+ */
 const CategoryTreeNode: React.FC<CategoryTreeNodeProps> = ({
   category,
   depth = 0,
