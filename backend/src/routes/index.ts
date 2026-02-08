@@ -6,6 +6,7 @@ import categoryRoutes from './category.routes';
 import transactionRoutes from './transaction.routes';
 import customerRoutes from './customer.routes';
 import inventoryRoutes from './inventory.routes';
+import purchaseOrderRoutes from './purchaseOrder.routes';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/categories', categoryRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/customers', customerRoutes);
 router.use('/inventory', inventoryRoutes);
+router.use('/purchase-orders', purchaseOrderRoutes);
 
 export default router;

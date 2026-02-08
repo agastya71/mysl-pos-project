@@ -189,7 +189,7 @@ export const createAdjustment = async (
  * {
  *   "success": true,
  *   "data": {
- *     "data": [ /* array of adjustments */ ],
+ *     "data": [...],
  *     "pagination": {
  *       "page": 1,
  *       "limit": 20,
@@ -254,8 +254,7 @@ export const getAdjustments = async (
  *     "old_quantity": 100,
  *     "new_quantity": 95,
  *     "reason": "Water damage",
- *     "adjusted_at": "2026-02-08T10:30:00Z",
- *     /* ... additional fields ... */
+ *     "adjusted_at": "2026-02-08T10:30:00Z"
  *   }
  * }
  *
@@ -304,9 +303,9 @@ export const getAdjustmentById = async (
  * {
  *   "success": true,
  *   "data": [
- *     { /* adjustment 1 (most recent) */ },
- *     { /* adjustment 2 */ },
- *     { /* adjustment 3 */ }
+ *     {},
+ *     {},
+ *     {}
  *   ]
  * }
  *
