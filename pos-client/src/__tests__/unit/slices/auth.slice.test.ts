@@ -1,190 +1,198 @@
 import authReducer, {
-  loginSuccess,
+  login,
   logout,
-  refreshTokenSuccess,
+  clearError,
   AuthState,
 } from '../../../store/slices/auth.slice';
+import { authApi, LoginResponse } from '../../../services/api/auth.api';
+
+// Mock the auth API
+jest.mock('../../../services/api/auth.api');
+const mockAuthApi = authApi as jest.Mocked<typeof authApi>;
 
 describe('auth.slice', () => {
   const initialState: AuthState = {
     user: null,
-    tokens: null,
     isAuthenticated: false,
     isLoading: false,
     error: null,
   };
 
-  const mockUser = {
+  const mockUser: LoginResponse['user'] = {
     id: 'user-123',
     username: 'testuser',
     full_name: 'Test User',
-    email: 'test@example.com',
-    role: 'cashier' as const,
+    role: 'cashier',
     assigned_terminal_id: 'terminal-123',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
   };
 
-  const mockTokens = {
-    accessToken: 'mock-access-token',
-    refreshToken: 'mock-refresh-token',
-    expiresIn: 3600,
+  const mockLoginResponse: LoginResponse = {
+    user: mockUser,
+    tokens: {
+      accessToken: 'mock-access-token',
+      refreshToken: 'mock-refresh-token',
+    },
   };
 
-  describe('loginSuccess', () => {
-    it('should set user and tokens on successful login', () => {
-      const state = authReducer(
-        initialState,
-        loginSuccess({ user: mockUser, tokens: mockTokens })
-      );
+  beforeEach(() => {
+    jest.clearAllMocks();
+    localStorage.clear();
+  });
+
+  describe('login async thunk', () => {
+    it('should set loading state when login is pending', () => {
+      const action = { type: login.pending.type };
+      const state = authReducer(initialState, action);
+
+      expect(state.isLoading).toBe(true);
+      expect(state.error).toBeNull();
+    });
+
+    it('should set user and authenticated on successful login', () => {
+      const action = {
+        type: login.fulfilled.type,
+        payload: mockLoginResponse,
+      };
+      const state = authReducer(initialState, action);
 
       expect(state.isAuthenticated).toBe(true);
       expect(state.user).toEqual(mockUser);
-      expect(state.tokens).toEqual(mockTokens);
       expect(state.error).toBeNull();
       expect(state.isLoading).toBe(false);
     });
 
-    it('should update state if already logged in', () => {
-      const existingState: AuthState = {
-        user: { ...mockUser, username: 'olduser' },
-        tokens: { ...mockTokens, accessToken: 'old-token' },
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
+    it('should set error on failed login', () => {
+      const errorMessage = 'Invalid credentials';
+      const action = {
+        type: login.rejected.type,
+        payload: errorMessage,
       };
+      const state = authReducer(initialState, action);
 
-      const state = authReducer(
-        existingState,
-        loginSuccess({ user: mockUser, tokens: mockTokens })
-      );
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.user).toBeNull();
+      expect(state.error).toBe(errorMessage);
+      expect(state.isLoading).toBe(false);
+    });
 
-      expect(state.user?.username).toBe('testuser');
-      expect(state.tokens?.accessToken).toBe('mock-access-token');
+    it('should handle login with API call', async () => {
+      mockAuthApi.login.mockResolvedValue(mockLoginResponse);
+
+      const dispatch = jest.fn();
+      const getState = jest.fn();
+      const extra = {};
+
+      const thunk = login({ username: 'testuser', password: 'password123' });
+      const result = await thunk(dispatch, getState, extra);
+
+      expect(mockAuthApi.login).toHaveBeenCalledWith({
+        username: 'testuser',
+        password: 'password123',
+      });
+      expect(result.payload).toEqual(mockLoginResponse);
     });
   });
 
-  describe('logout', () => {
-    it('should clear all auth state', () => {
+  describe('logout async thunk', () => {
+    it('should clear all auth state on logout', () => {
       const authenticatedState: AuthState = {
         user: mockUser,
-        tokens: mockTokens,
         isAuthenticated: true,
         isLoading: false,
         error: null,
       };
 
-      const state = authReducer(authenticatedState, logout());
+      const action = { type: logout.fulfilled.type };
+      const state = authReducer(authenticatedState, action);
 
       expect(state.user).toBeNull();
-      expect(state.tokens).toBeNull();
       expect(state.isAuthenticated).toBe(false);
       expect(state.error).toBeNull();
     });
 
     it('should handle logout from initial state', () => {
-      const state = authReducer(initialState, logout());
+      const action = { type: logout.fulfilled.type };
+      const state = authReducer(initialState, action);
 
       expect(state.user).toBeNull();
-      expect(state.tokens).toBeNull();
       expect(state.isAuthenticated).toBe(false);
+    });
+
+    it('should call logout API when thunk is dispatched', async () => {
+      mockAuthApi.logout.mockResolvedValue();
+      localStorage.setItem('refreshToken', 'test-refresh-token');
+
+      const dispatch = jest.fn();
+      const getState = jest.fn();
+      const extra = {};
+
+      const thunk = logout();
+      await thunk(dispatch, getState, extra);
+
+      expect(mockAuthApi.logout).toHaveBeenCalledWith('test-refresh-token');
     });
   });
 
-  describe('refreshTokenSuccess', () => {
-    it('should update tokens while keeping user data', () => {
-      const authenticatedState: AuthState = {
+  describe('clearError action', () => {
+    it('should clear error message', () => {
+      const stateWithError: AuthState = {
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: 'Some error occurred',
+      };
+
+      const state = authReducer(stateWithError, clearError());
+
+      expect(state.error).toBeNull();
+    });
+
+    it('should not affect other state properties', () => {
+      const stateWithError: AuthState = {
         user: mockUser,
-        tokens: mockTokens,
         isAuthenticated: true,
         isLoading: false,
-        error: null,
+        error: 'Some error occurred',
       };
 
-      const newTokens = {
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        expiresIn: 3600,
-      };
+      const state = authReducer(stateWithError, clearError());
 
-      const state = authReducer(authenticatedState, refreshTokenSuccess(newTokens));
-
-      expect(state.user).toEqual(mockUser); // User unchanged
-      expect(state.tokens).toEqual(newTokens); // Tokens updated
+      expect(state.error).toBeNull();
+      expect(state.user).toEqual(mockUser);
       expect(state.isAuthenticated).toBe(true);
-    });
-
-    it('should handle token refresh when not logged in', () => {
-      const newTokens = {
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        expiresIn: 3600,
-      };
-
-      const state = authReducer(initialState, refreshTokenSuccess(newTokens));
-
-      expect(state.tokens).toEqual(newTokens);
-      expect(state.user).toBeNull(); // No user data
-      expect(state.isAuthenticated).toBe(false);
-    });
-  });
-
-  describe('localStorage integration', () => {
-    beforeEach(() => {
-      localStorage.clear();
-    });
-
-    it('should persist tokens to localStorage on login', () => {
-      authReducer(initialState, loginSuccess({ user: mockUser, tokens: mockTokens }));
-
-      // Note: Actual localStorage persistence happens in middleware
-      // This test documents the expected behavior
-      expect(true).toBe(true);
-    });
-
-    it('should clear localStorage on logout', () => {
-      const authenticatedState: AuthState = {
-        user: mockUser,
-        tokens: mockTokens,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      };
-
-      authReducer(authenticatedState, logout());
-
-      // Note: Actual localStorage clearing happens in middleware
-      expect(true).toBe(true);
+      expect(state.isLoading).toBe(false);
     });
   });
 
   describe('user properties', () => {
     it('should store all user properties correctly', () => {
-      const state = authReducer(
-        initialState,
-        loginSuccess({ user: mockUser, tokens: mockTokens })
-      );
+      const action = {
+        type: login.fulfilled.type,
+        payload: mockLoginResponse,
+      };
+      const state = authReducer(initialState, action);
 
       expect(state.user?.id).toBe('user-123');
       expect(state.user?.username).toBe('testuser');
       expect(state.user?.full_name).toBe('Test User');
-      expect(state.user?.email).toBe('test@example.com');
       expect(state.user?.role).toBe('cashier');
       expect(state.user?.assigned_terminal_id).toBe('terminal-123');
-      expect(state.user?.is_active).toBe(true);
     });
 
     it('should handle user with manager role', () => {
       const managerUser = {
         ...mockUser,
-        role: 'manager' as const,
+        role: 'manager',
       };
 
-      const state = authReducer(
-        initialState,
-        loginSuccess({ user: managerUser, tokens: mockTokens })
-      );
+      const action = {
+        type: login.fulfilled.type,
+        payload: {
+          user: managerUser,
+          tokens: mockLoginResponse.tokens,
+        },
+      };
+      const state = authReducer(initialState, action);
 
       expect(state.user?.role).toBe('manager');
     });
@@ -192,42 +200,49 @@ describe('auth.slice', () => {
     it('should handle user without assigned terminal', () => {
       const noTerminalUser = {
         ...mockUser,
-        assigned_terminal_id: null,
+        assigned_terminal_id: undefined,
       };
 
-      const state = authReducer(
-        initialState,
-        loginSuccess({ user: noTerminalUser, tokens: mockTokens })
-      );
+      const action = {
+        type: login.fulfilled.type,
+        payload: {
+          user: noTerminalUser,
+          tokens: mockLoginResponse.tokens,
+        },
+      };
+      const state = authReducer(initialState, action);
 
-      expect(state.user?.assigned_terminal_id).toBeNull();
+      expect(state.user?.assigned_terminal_id).toBeUndefined();
     });
   });
 
-  describe('token properties', () => {
-    it('should store all token properties', () => {
-      const state = authReducer(
-        initialState,
-        loginSuccess({ user: mockUser, tokens: mockTokens })
-      );
+  describe('error handling', () => {
+    it('should handle network errors during login', () => {
+      const errorMessage = 'Network error';
+      const action = {
+        type: login.rejected.type,
+        payload: errorMessage,
+      };
+      const state = authReducer(initialState, action);
 
-      expect(state.tokens?.accessToken).toBe('mock-access-token');
-      expect(state.tokens?.refreshToken).toBe('mock-refresh-token');
-      expect(state.tokens?.expiresIn).toBe(3600);
+      expect(state.error).toBe(errorMessage);
+      expect(state.isLoading).toBe(false);
+      expect(state.isAuthenticated).toBe(false);
     });
 
-    it('should handle different expiration times', () => {
-      const shortLivedTokens = {
-        ...mockTokens,
-        expiresIn: 900, // 15 minutes
+    it('should clear previous errors on new login attempt', () => {
+      const stateWithError: AuthState = {
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: 'Previous error',
       };
 
-      const state = authReducer(
-        initialState,
-        loginSuccess({ user: mockUser, tokens: shortLivedTokens })
-      );
+      const action = { type: login.pending.type };
+      const state = authReducer(stateWithError, action);
 
-      expect(state.tokens?.expiresIn).toBe(900);
+      expect(state.error).toBeNull();
+      expect(state.isLoading).toBe(true);
     });
   });
 });

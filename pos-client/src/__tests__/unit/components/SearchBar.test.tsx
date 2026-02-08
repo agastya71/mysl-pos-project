@@ -47,7 +47,9 @@ describe('SearchBar Component', () => {
     renderSearchBar();
 
     const input = screen.getByPlaceholderText(/search products/i);
-    expect(input).toHaveAttribute('autoFocus');
+    // React autoFocus prop focuses the element but doesn't add the attribute to DOM
+    // Test that the element is focused instead
+    expect(document.activeElement).toBe(input);
   });
 
   it('should update input value when typing', () => {
