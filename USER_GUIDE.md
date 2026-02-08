@@ -1,6 +1,6 @@
 # POS System - User Guide
 
-**Version**: 1.0
+**Version**: 1.1
 **Last Updated**: February 8, 2026
 **For**: Cashiers, Managers, and Administrators
 
@@ -14,8 +14,9 @@
 4. [Customer Management](#customer-management)
 5. [Product Categories](#product-categories)
 6. [Inventory Management](#inventory-management)
-7. [Troubleshooting](#troubleshooting)
-8. [FAQ](#faq)
+7. [Purchase Order Management](#purchase-order-management)
+8. [Troubleshooting](#troubleshooting)
+9. [FAQ](#faq)
 
 ---
 
@@ -488,14 +489,280 @@ To see all adjustments for a single product:
 
 ## Inventory Reports
 
-> **Note**: This feature is coming in Phase 3C (next phase). This section will be updated after implementation.
+The Inventory Reports feature provides insights into your stock levels, inventory value, and movement patterns.
 
-**Planned Reports**:
-- Low Stock Report
-- Out of Stock Report
-- Inventory Valuation Report
-- Movement Report (sales + adjustments)
-- Category Summary
+### Accessing Reports
+
+1. Click **📦 Inventory** in the top navigation
+2. Click the **📊 Reports** button (green button)
+3. You'll see a dashboard with multiple report tabs
+
+### Available Reports
+
+**Overview Tab**:
+- Quick summary cards showing key metrics
+- Total products, low stock count, out of stock count
+- Total inventory value
+
+**Low Stock Report**:
+- Products at or below their reorder level
+- Color-coded badges (Critical/Warning)
+- Shows reorder recommendations
+- Helps you identify what needs restocking soon
+
+**Out of Stock Report**:
+- Products with zero quantity
+- Urgent priority items
+- Shows last sale date
+- Critical for preventing lost sales
+
+**Valuation Report**:
+- Total inventory value by category
+- Category breakdown with percentages
+- Helps understand where your capital is invested
+- Useful for financial reporting
+
+**Movement Report**:
+- Stock changes over a date range
+- Shows opening stock, sales, adjustments, and closing stock
+- Date range filter available
+- Helps analyze stock trends
+
+**Category Summary**:
+- Statistics grouped by product category
+- Health indicators per category
+- Product count, stock levels, and value per category
+- Useful for category management decisions
+
+### Best Practices
+
+**Review Reports Regularly**:
+- Check Low Stock report daily
+- Review Out of Stock report before each day
+- Run Valuation report weekly or monthly
+- Use Movement report for trend analysis
+
+---
+
+## Purchase Order Management
+
+Purchase Orders (POs) help you manage restocking from suppliers and track what's been ordered, received, and paid for.
+
+### Overview
+
+**What is a Purchase Order?**
+A Purchase Order is a formal request to buy products from a vendor. It tracks:
+- What products you ordered
+- How many you ordered
+- Expected delivery date
+- Costs and totals
+- Receiving status (what's arrived)
+
+**PO Status Workflow**:
+```
+Draft → Submitted → Approved → Partially Received → Received → Closed
+                               ↓
+                           Cancelled
+```
+
+### Viewing Purchase Orders
+
+1. Click **🛒 Purchase Orders** in the top navigation (from POS page)
+2. You'll see a list of all purchase orders
+
+**Each PO shows**:
+- PO Number (e.g., PO-20260208-0001)
+- Vendor name
+- Order type (Standard, Urgent, Drop Ship)
+- Status (with color-coded badge)
+- Order date
+- Expected delivery date
+- Total amount
+- Action buttons (based on status)
+
+### Creating a Purchase Order
+
+#### Option 1: Manual Creation
+
+1. On the Purchase Orders page, click **+ Create PO**
+2. Fill in the order details:
+   - **Vendor**: Select from dropdown (required)
+   - **Order Type**: Standard, Urgent, or Drop Ship
+   - **Expected Delivery Date**: When you expect the shipment
+   - **Shipping Address**: Where items will be delivered
+   - **Billing Address**: Where invoice should be sent
+   - **Payment Terms**: e.g., "Net 30 days"
+   - **Notes**: Any additional information
+
+3. Add line items:
+   - Click **Add Product**
+   - Search for and select a product
+   - Enter **Quantity Ordered**
+   - Enter **Unit Cost** (what you're paying per unit)
+   - Optionally add **Tax Amount** and **Notes**
+   - The line total calculates automatically
+
+4. Review the totals section:
+   - Subtotal (sum of all line items)
+   - Tax Amount
+   - Shipping Cost (optional)
+   - Other Charges (optional)
+   - Discount Amount (optional)
+   - **Total Amount** (calculated automatically)
+
+5. Click **Save as Draft** or **Submit for Approval**
+
+**Auto-Generated PO Number**: Each PO receives a unique number like `PO-20260208-0001`
+
+#### Option 2: From Reorder Suggestions
+
+1. On the Purchase Orders page, click **Reorder Suggestions**
+2. You'll see products that are low on stock, grouped by vendor
+3. Each vendor section shows:
+   - Products at or below reorder level
+   - Current stock quantity
+   - Recommended reorder quantity
+   - Estimated cost
+4. Click **Create PO for Vendor** button
+5. A new PO form opens, pre-filled with:
+   - Vendor selected
+   - Line items for all low-stock products
+   - Reorder quantities filled in
+   - Costs from product data
+6. Review and adjust quantities/costs as needed
+7. Click **Save as Draft** or **Submit for Approval**
+
+### Editing a Purchase Order
+
+> **Important**: You can only edit POs in "Draft" status.
+
+1. Find the PO in the list
+2. Click the **Edit** button
+3. Modify any fields or line items
+4. Add or remove products
+5. Click **Update PO**
+
+### PO Workflow
+
+#### Submitting for Approval
+
+1. Open the draft PO (click PO number or View button)
+2. Review all details carefully
+3. Click **Submit for Approval**
+4. Status changes to "Submitted"
+5. A manager or administrator will need to approve it
+
+> **Note**: Once submitted, you cannot edit the PO.
+
+#### Approving a PO (Managers/Admins Only)
+
+1. Find the submitted PO in the list
+2. Click the **Approve** button, or open details and click **Approve**
+3. Status changes to "Approved"
+4. The PO is now ready to be sent to the vendor
+5. System records who approved it and when
+
+#### Receiving Items
+
+Once items arrive from the vendor:
+
+1. Open the approved PO details page
+2. Click the **Receive Items** button
+3. In the Receive Items modal:
+   - Each line item shows:
+     - Product name and SKU
+     - Quantity Ordered
+     - Quantity Received (so far)
+     - Quantity Pending (still expected)
+   - Enter **Received Quantity** for each item
+   - System validates you can't receive more than ordered
+   - Optionally add **Notes** (e.g., "Box damaged but contents OK")
+4. Click **Save Received Quantities**
+
+**What Happens**:
+- Product inventory automatically increases by received amount
+- PO status updates:
+  - If nothing received yet: stays "Approved"
+  - If partially received: changes to "Partially Received"
+  - If fully received: changes to "Received"
+- You can receive in multiple shipments (partial receives)
+
+**Example**:
+- Ordered: 100 bottles
+- Received first time: 50 bottles (status → Partially Received)
+- Received second time: 50 bottles (status → Received)
+
+#### Closing a PO
+
+Once all items are received and everything is complete:
+
+1. Open the PO details page
+2. Verify all items have been fully received
+3. Click **Close PO**
+4. Status changes to "Closed"
+5. PO is archived but still viewable for records
+
+#### Cancelling a PO
+
+If you need to cancel an order (vendor out of stock, changed plans, etc.):
+
+1. Open the PO details page
+2. Click **Cancel PO**
+3. Enter a **Reason** for cancellation (required)
+4. Click **Confirm Cancel**
+5. Status changes to "Cancelled"
+
+> **Note**: You can cancel POs in Draft, Submitted, Approved, or Partially Received status. You cannot cancel Closed or already-Cancelled POs.
+
+### Searching and Filtering POs
+
+**Search by PO Number**:
+1. Use the search box at the top
+2. Type the PO number (e.g., PO-20260208-0001)
+3. Results filter as you type
+
+**Filter by Vendor**:
+1. Click the **Vendor** dropdown
+2. Select a vendor to see only their POs
+
+**Filter by Status**:
+1. Click the **Status** dropdown
+2. Select: All, Draft, Submitted, Approved, etc.
+
+**Filter by Order Type**:
+1. Click the **Order Type** dropdown
+2. Select: All, Standard, Urgent, Drop Ship
+
+**Filter by Date Range**:
+1. Select **Start Date** and **End Date**
+2. Only POs created in that range will show
+
+**Clear All Filters**:
+- Click **Clear Filters** button
+
+### Best Practices
+
+**Regular Review**:
+- Check Reorder Suggestions daily
+- Create POs promptly for low-stock items
+- Maintain adequate lead time (order before you run out)
+
+**Receiving**:
+- Receive items as soon as they arrive
+- Record partial shipments immediately
+- Add notes about any issues (damaged boxes, shortages)
+- This keeps inventory counts accurate
+
+**Documentation**:
+- Use the Notes field for important details
+- Record vendor communication
+- Note any special terms or agreements
+
+**Workflow Discipline**:
+- Always submit drafts for approval (don't leave in Draft)
+- Managers: Review and approve POs promptly
+- Close POs once complete (keeps list clean)
+- Only cancel with good reason and documentation
 
 ---
 
@@ -708,28 +975,23 @@ If you encounter issues not covered in this guide:
 
 ## What's Coming Next
 
-**Phase 3C: Inventory Reports** (Next Update)
-- Low stock alerts
-- Inventory valuation by category
-- Movement reports (track sales and adjustments over time)
-- Out of stock notifications
-
 **Future Features**:
 - Split payments (cash + card)
 - Credit card payment integration
 - Receipt printer support
 - Barcode scanner support
-- Purchase order management
-- Physical stock count workflow
+- Physical stock count workflow (cycle counting, variance tracking)
 - Customer loyalty program
 - Sales analytics and dashboards
 - Line-item discounts
 - Employee performance reports
+- Vendor payment tracking
+- PO return/exchange workflow
 
 ---
 
-**User Guide Version**: 1.0
+**User Guide Version**: 1.1
 **Last Updated**: February 8, 2026
-**Next Update**: After Phase 3C implementation
+**Next Update**: After next phase implementation
 
 **Your feedback helps us improve this guide!** Contact your administrator with suggestions or questions.

@@ -1,9 +1,9 @@
 # POS System - Technical Documentation
 
-**Version**: 1.0
+**Version**: 1.1
 **Last Updated**: February 8, 2026
-**Phases Documented**: 1B, 1D, 2, 3A, 3B
-**Next Phase**: 3C - Inventory Reports
+**Phases Documented**: 1B, 1D, 2, 3A, 3B, 3C, 3D
+**Next Phase**: TBD
 
 ---
 
@@ -453,6 +453,105 @@ CREATE INDEX idx_inv_adj_date ON inventory_adjustments(adjustment_date);
 CREATE INDEX idx_inv_adj_type ON inventory_adjustments(adjustment_type);
 ```
 
+#### vendors
+```sql
+CREATE TABLE vendors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vendor_number VARCHAR(50) UNIQUE NOT NULL, -- VEND-XXXXXX
+  vendor_type VARCHAR(50) NOT NULL, -- 'supplier', 'distributor', 'manufacturer'
+  business_name VARCHAR(200) NOT NULL,
+  contact_person VARCHAR(100),
+  email VARCHAR(100),
+  phone VARCHAR(20),
+  address_line1 VARCHAR(200),
+  address_line2 VARCHAR(200),
+  city VARCHAR(100),
+  state VARCHAR(50),
+  postal_code VARCHAR(20),
+  country VARCHAR(50) DEFAULT 'USA',
+  payment_terms VARCHAR(50), -- 'net_30', 'net_60', 'cod', etc.
+  tax_id VARCHAR(50),
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### purchase_orders
+```sql
+CREATE TABLE purchase_orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  po_number VARCHAR(50) UNIQUE NOT NULL, -- PO-YYYYMMDD-XXXX
+  vendor_id UUID NOT NULL REFERENCES vendors(id),
+  order_type VARCHAR(20) DEFAULT 'standard', -- 'standard', 'urgent', 'drop_ship'
+  status VARCHAR(20) DEFAULT 'draft', -- 'draft', 'submitted', 'approved', 'partially_received', 'received', 'closed', 'cancelled'
+  order_date DATE DEFAULT CURRENT_DATE,
+  expected_delivery_date DATE,
+  delivery_date DATE,
+
+  -- Financial fields
+  subtotal_amount DECIMAL(12, 2) DEFAULT 0,
+  tax_amount DECIMAL(12, 2) DEFAULT 0,
+  shipping_cost DECIMAL(12, 2) DEFAULT 0,
+  other_charges DECIMAL(12, 2) DEFAULT 0,
+  discount_amount DECIMAL(12, 2) DEFAULT 0,
+  total_amount DECIMAL(12, 2) DEFAULT 0,
+
+  -- Shipping/billing
+  shipping_address TEXT,
+  billing_address TEXT,
+
+  -- Payment tracking
+  payment_terms VARCHAR(50),
+  payment_status VARCHAR(20), -- 'pending', 'partial', 'paid'
+  amount_paid DECIMAL(12, 2) DEFAULT 0,
+
+  -- Workflow tracking
+  created_by UUID NOT NULL REFERENCES users(id),
+  approved_by UUID REFERENCES users(id),
+  approved_at TIMESTAMP,
+
+  -- Metadata
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_po_vendor ON purchase_orders(vendor_id);
+CREATE INDEX idx_po_status ON purchase_orders(status);
+CREATE INDEX idx_po_order_date ON purchase_orders(order_date);
+```
+
+#### purchase_order_items
+```sql
+CREATE TABLE purchase_order_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  purchase_order_id UUID NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id),
+  sku VARCHAR(50) NOT NULL,
+  product_name VARCHAR(100) NOT NULL,
+
+  -- Quantities
+  quantity_ordered INTEGER NOT NULL,
+  quantity_received INTEGER DEFAULT 0,
+  quantity_pending INTEGER GENERATED ALWAYS AS (quantity_ordered - quantity_received) STORED,
+
+  -- Costs
+  unit_cost DECIMAL(10, 2) NOT NULL,
+  tax_amount DECIMAL(10, 2) DEFAULT 0,
+  line_total DECIMAL(10, 2) NOT NULL,
+
+  -- Metadata
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_po_items_po ON purchase_order_items(purchase_order_id);
+CREATE INDEX idx_po_items_product ON purchase_order_items(product_id);
+```
+
 ### Database Functions
 
 #### generate_transaction_number()
@@ -557,6 +656,78 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
+#### generate_po_number()
+```sql
+CREATE OR REPLACE FUNCTION generate_po_number()
+RETURNS TRIGGER AS $$
+DECLARE
+  today TEXT;
+  next_num INTEGER;
+BEGIN
+  today := TO_CHAR(CURRENT_DATE, 'YYYYMMDD');
+
+  SELECT COALESCE(MAX(CAST(SUBSTRING(po_number FROM 14) AS INTEGER)), 0) + 1
+  INTO next_num
+  FROM purchase_orders
+  WHERE po_number LIKE 'PO-' || today || '-%';
+
+  NEW.po_number := 'PO-' || today || '-' || LPAD(next_num::TEXT, 4, '0');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+#### receive_po_items()
+```sql
+CREATE OR REPLACE FUNCTION receive_po_items()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Auto-update product inventory when items received
+  IF NEW.quantity_received > OLD.quantity_received THEN
+    UPDATE products
+    SET quantity_in_stock = quantity_in_stock + (NEW.quantity_received - OLD.quantity_received),
+        updated_at = NOW()
+    WHERE id = NEW.product_id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+#### update_po_status()
+```sql
+CREATE OR REPLACE FUNCTION update_po_status()
+RETURNS TRIGGER AS $$
+DECLARE
+  total_ordered INTEGER;
+  total_received INTEGER;
+  po_status VARCHAR(20);
+BEGIN
+  SELECT SUM(quantity_ordered), SUM(quantity_received)
+  INTO total_ordered, total_received
+  FROM purchase_order_items
+  WHERE purchase_order_id = NEW.purchase_order_id;
+
+  IF total_received = 0 THEN
+    po_status := 'approved';
+  ELSIF total_received < total_ordered THEN
+    po_status := 'partially_received';
+  ELSE
+    po_status := 'received';
+  END IF;
+
+  UPDATE purchase_orders
+  SET status = po_status,
+      delivery_date = CASE WHEN po_status = 'received' THEN CURRENT_DATE ELSE delivery_date END,
+      updated_at = NOW()
+  WHERE id = NEW.purchase_order_id;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
 #### update_inventory_on_transaction()
 ```sql
 CREATE OR REPLACE FUNCTION update_inventory_on_transaction()
@@ -614,6 +785,27 @@ AFTER INSERT ON transactions
 FOR EACH ROW
 WHEN (NEW.status = 'completed')
 EXECUTE FUNCTION update_inventory_on_transaction();
+
+-- Auto-generate PO numbers
+CREATE TRIGGER set_po_number
+BEFORE INSERT ON purchase_orders
+FOR EACH ROW
+WHEN (NEW.po_number IS NULL OR NEW.po_number = '')
+EXECUTE FUNCTION generate_po_number();
+
+-- Auto-update inventory when PO items received
+CREATE TRIGGER receive_po_items_trigger
+AFTER UPDATE ON purchase_order_items
+FOR EACH ROW
+WHEN (NEW.quantity_received > OLD.quantity_received)
+EXECUTE FUNCTION receive_po_items();
+
+-- Auto-update PO status based on received quantities
+CREATE TRIGGER update_po_status_trigger
+AFTER UPDATE ON purchase_order_items
+FOR EACH ROW
+WHEN (NEW.quantity_received <> OLD.quantity_received)
+EXECUTE FUNCTION update_po_status();
 ```
 
 ---
@@ -1099,6 +1291,275 @@ curl http://localhost:3000/api/v1/inventory/products/{productId}/history \
 
 ---
 
+### Purchase Orders
+
+#### POST /purchase-orders
+Create new purchase order.
+
+**Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/purchase-orders \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vendor_id": "uuid",
+    "order_type": "standard",
+    "expected_delivery_date": "2026-02-15",
+    "shipping_address": "123 Main St, City, ST 12345",
+    "payment_terms": "net_30",
+    "notes": "Urgent restock order",
+    "items": [
+      {
+        "product_id": "uuid",
+        "quantity_ordered": 100,
+        "unit_cost": 2.50,
+        "tax_amount": 0.20
+      }
+    ],
+    "shipping_cost": 25.00
+  }'
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "po_number": "PO-20260208-0001",
+    "vendor_id": "uuid",
+    "vendor_name": "Office Supply Co",
+    "status": "draft",
+    "total_amount": 275.20,
+    "items": [...]
+  }
+}
+```
+
+#### GET /purchase-orders
+Get all purchase orders with filters.
+
+**Query Parameters**:
+- `vendor_id` (UUID): Filter by vendor
+- `status` (string): Filter by status
+- `order_type` (string): Filter by order type
+- `start_date` (ISO date): Filter from date
+- `end_date` (ISO date): Filter to date
+- `search` (string): Search by PO number
+- `page` (number): Page number
+- `limit` (number): Items per page
+
+**Request**:
+```bash
+curl "http://localhost:3000/api/v1/purchase-orders?status=approved&page=1" \
+  -H "Authorization: Bearer {token}"
+```
+
+#### GET /purchase-orders/:id
+Get purchase order by ID with full details.
+
+**Request**:
+```bash
+curl http://localhost:3000/api/v1/purchase-orders/{id} \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "po_number": "PO-20260208-0001",
+    "vendor_name": "Office Supply Co",
+    "status": "approved",
+    "order_date": "2026-02-08",
+    "total_amount": 275.20,
+    "items": [
+      {
+        "id": "uuid",
+        "product_name": "Water Bottle",
+        "sku": "WTR-001",
+        "quantity_ordered": 100,
+        "quantity_received": 0,
+        "quantity_pending": 100,
+        "unit_cost": 2.50
+      }
+    ],
+    "created_by_name": "Admin User",
+    "approved_by_name": "Manager User"
+  }
+}
+```
+
+#### PUT /purchase-orders/:id
+Update draft purchase order.
+
+**Request**:
+```bash
+curl -X PUT http://localhost:3000/api/v1/purchase-orders/{id} \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "expected_delivery_date": "2026-02-20",
+    "notes": "Updated delivery date"
+  }'
+```
+
+#### DELETE /purchase-orders/:id
+Delete draft purchase order.
+
+**Request**:
+```bash
+curl -X DELETE http://localhost:3000/api/v1/purchase-orders/{id} \
+  -H "Authorization: Bearer {token}"
+```
+
+#### POST /purchase-orders/:id/submit
+Submit draft PO for approval.
+
+**Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/purchase-orders/{id}/submit \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Purchase order submitted for approval",
+  "data": {
+    "id": "uuid",
+    "po_number": "PO-20260208-0001",
+    "status": "submitted"
+  }
+}
+```
+
+#### POST /purchase-orders/:id/approve
+Approve submitted PO.
+
+**Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/purchase-orders/{id}/approve \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Purchase order approved",
+  "data": {
+    "id": "uuid",
+    "po_number": "PO-20260208-0001",
+    "status": "approved",
+    "approved_by": "uuid",
+    "approved_at": "2026-02-08T10:30:00.000Z"
+  }
+}
+```
+
+#### POST /purchase-orders/:id/receive
+Record received quantities for items.
+
+**Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/purchase-orders/{id}/receive \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      {
+        "item_id": "uuid",
+        "quantity_received": 50,
+        "notes": "Partial shipment received"
+      }
+    ]
+  }'
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Items received successfully",
+  "data": {
+    "id": "uuid",
+    "po_number": "PO-20260208-0001",
+    "status": "partially_received",
+    "items": [
+      {
+        "id": "uuid",
+        "quantity_ordered": 100,
+        "quantity_received": 50,
+        "quantity_pending": 50
+      }
+    ]
+  }
+}
+```
+
+#### POST /purchase-orders/:id/cancel
+Cancel purchase order with reason.
+
+**Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/purchase-orders/{id}/cancel \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Vendor out of stock"
+  }'
+```
+
+#### POST /purchase-orders/:id/close
+Close received purchase order.
+
+**Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/purchase-orders/{id}/close \
+  -H "Authorization: Bearer {token}"
+```
+
+#### GET /purchase-orders/reorder-suggestions
+Get products that need reordering grouped by vendor.
+
+**Request**:
+```bash
+curl http://localhost:3000/api/v1/purchase-orders/reorder-suggestions \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "vendor_id": "uuid",
+      "vendor_name": "Office Supply Co",
+      "total_items": 5,
+      "estimated_total": 1250.00,
+      "products": [
+        {
+          "product_id": "uuid",
+          "sku": "WTR-001",
+          "product_name": "Water Bottle",
+          "quantity_in_stock": 8,
+          "reorder_level": 10,
+          "reorder_quantity": 50,
+          "unit_cost": 2.50
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
 ## Frontend Architecture
 
 ### Component Hierarchy
@@ -1134,9 +1595,23 @@ App
 │   ├── CategoriesPage
 │   │   ├── CategoryTree
 │   │   └── CategoryForm
-│   └── InventoryPage
-│       ├── AdjustmentForm
-│       └── InventoryHistoryPage
+│   ├── InventoryPage
+│   │   ├── AdjustmentForm
+│   │   ├── InventoryHistoryPage
+│   │   └── InventoryReportsPage
+│   │       ├── LowStockReport
+│   │       ├── OutOfStockReport
+│   │       ├── ValuationReport
+│   │       ├── MovementReport
+│   │       └── CategorySummaryReport
+│   └── PurchaseOrdersPage
+│       ├── PurchaseOrderFormPage
+│       │   ├── VendorSelector
+│       │   ├── ProductSelector
+│       │   └── POLineItemTable
+│       ├── PurchaseOrderDetailsPage
+│       │   └── ReceiveItemsModal
+│       └── ReorderSuggestionsPage
 └── Common Components
     ├── Pagination
     ├── LoadingSpinner
@@ -1198,6 +1673,24 @@ App
     filters: AdjustmentFilters,
     loading: boolean,
     error: string | null
+  },
+  inventoryReports: {
+    lowStock: LowStockItem[],
+    outOfStock: OutOfStockItem[],
+    valuation: ValuationReportItem[],
+    movement: MovementReportItem[],
+    categorySummary: CategorySummaryItem[],
+    loading: { [key: string]: boolean },
+    error: { [key: string]: string | null }
+  },
+  purchaseOrders: {
+    list: PurchaseOrderWithDetails[],
+    filters: POListQuery,
+    pagination: Pagination,
+    selectedPO: PurchaseOrderWithDetails | null,
+    draft: DraftPO | null,
+    loading: boolean,
+    error: string | null
   }
 }
 ```
@@ -1214,6 +1707,12 @@ App
 - `/categories` - CategoriesPage
 - `/inventory` - InventoryPage
 - `/inventory/history` - InventoryHistoryPage
+- `/inventory/reports` - InventoryReportsPage
+- `/purchase-orders` - PurchaseOrdersPage (list view)
+- `/purchase-orders/new` - PurchaseOrderFormPage (create)
+- `/purchase-orders/reorder-suggestions` - ReorderSuggestionsPage
+- `/purchase-orders/:id` - PurchaseOrderDetailsPage (view/receive)
+- `/purchase-orders/:id/edit` - PurchaseOrderFormPage (edit)
 
 ### State Management Patterns
 
@@ -1670,10 +2169,11 @@ brew services restart redis
 
 ---
 
-**Documentation Version**: 1.1
+**Documentation Version**: 1.2
 **Last Updated**: February 8, 2026
 **Maintained By**: Development Team
 **Major Updates**:
+- v1.2 (Feb 8, 2026): Added Phase 3C (Inventory Reports) and Phase 3D (Purchase Orders) documentation
 - v1.1 (Feb 8, 2026): Added comprehensive inline JSDoc documentation (63 files, 100% coverage)
 - v1.0 (Feb 8, 2026): Initial technical documentation
-**Next Update**: After Phase 3C implementation
+**Next Update**: After next phase implementation
