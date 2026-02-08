@@ -9,15 +9,192 @@
 
 ## Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [Technology Stack](#technology-stack)
-3. [Database Schema](#database-schema)
-4. [Backend API Reference](#backend-api-reference)
-5. [Frontend Architecture](#frontend-architecture)
-6. [Authentication & Security](#authentication--security)
-7. [Testing Guide](#testing-guide)
-8. [Development Setup](#development-setup)
-9. [Deployment Guide](#deployment-guide)
+1. [Inline Code Documentation](#inline-code-documentation) ⭐ **NEW**
+2. [Architecture Overview](#architecture-overview)
+3. [Technology Stack](#technology-stack)
+4. [Database Schema](#database-schema)
+5. [Backend API Reference](#backend-api-reference)
+6. [Frontend Architecture](#frontend-architecture)
+7. [Authentication & Security](#authentication--security)
+8. [Testing Guide](#testing-guide)
+9. [Development Setup](#development-setup)
+10. [Deployment Guide](#deployment-guide)
+
+---
+
+## Inline Code Documentation
+
+### Overview
+
+**All 63 core files in the POS system codebase now have comprehensive inline JSDoc documentation.** This documentation is embedded directly in the source code and provides IDE tooltips, IntelliSense, and type information.
+
+### Documentation Coverage (100%)
+
+| Category | Files | Status |
+|----------|-------|--------|
+| Backend Services | 5 | ✅ Complete |
+| Backend Controllers | 7 | ✅ Complete |
+| Frontend Redux Slices | 9 | ✅ Complete |
+| Frontend API Services | 7 | ✅ Complete |
+| React Components | 29 | ✅ Complete |
+| Type Definitions | 6 | ✅ Complete |
+| **Total** | **63** | **✅ 100%** |
+
+### What's Documented
+
+Every documented file includes:
+
+- **File-level documentation**: `@fileoverview` and `@module` tags describing the file's purpose
+- **Interface/Type documentation**: Complete `@interface`, `@property`, and `@typedef` tags
+- **Function/Method documentation**: `@param`, `@returns`, `@throws`, and `@async` tags
+- **Usage examples**: Multiple `@example` tags showing real-world usage patterns
+- **Cross-references**: `@see` tags linking related components
+- **Field constraints**: Validation rules, max lengths, and default values
+- **Metadata**: `@author`, `@created`, and `@updated` timestamps
+
+### How to Use Inline Documentation
+
+**In VS Code / JetBrains IDEs:**
+1. Hover over any function, class, interface, or component name
+2. See comprehensive documentation tooltip with examples
+3. Use "Go to Definition" (F12) to read full documentation
+4. IntelliSense shows parameter types and descriptions as you type
+
+**Example - Hovering over a function:**
+```typescript
+// Hover over 'createTransaction' to see:
+/**
+ * Create new transaction
+ *
+ * Creates completed transaction with items and payments atomically.
+ * Deducts inventory automatically via database trigger.
+ *
+ * @async
+ * @param cashierId - User ID of cashier creating transaction
+ * @param data - Transaction data with items and payments
+ * @returns Created transaction with generated transaction_number
+ * @throws {Error} If product not found, insufficient inventory, or database error
+ *
+ * @example
+ * const result = await createTransaction('user-123', {
+ *   terminal_id: 'term-456',
+ *   items: [{ product_id: 'prod-789', quantity: 2 }],
+ *   payments: [{ payment_method: 'cash', amount: 10.00 }]
+ * });
+ */
+```
+
+### Documented File Categories
+
+#### Backend Services (`backend/src/services/`)
+- `transaction.service.ts` - Transaction business logic with atomic operations
+- `customer.service.ts` - Customer CRUD operations with search
+- `category.service.ts` - Category management with tree building
+- `inventory.service.ts` - Inventory adjustments with validation
+- `product.service.ts` - Product management and inventory tracking
+
+#### Backend Controllers (`backend/src/controllers/`)
+- `transaction.controller.ts` - Transaction API endpoints (4 endpoints)
+- `customer.controller.ts` - Customer API endpoints (6 endpoints)
+- `category.controller.ts` - Category API endpoints (5 endpoints)
+- `inventory.controller.ts` - Inventory API endpoints (9 endpoints)
+- `product.controller.ts` - Product API endpoints (7 endpoints)
+- `auth.controller.ts` - Authentication endpoints (3 endpoints)
+- `health.controller.ts` - Health check endpoint
+
+#### Frontend Redux Slices (`pos-client/src/store/slices/`)
+- `auth.slice.ts` - Authentication state management
+- `products.slice.ts` - Product catalog state
+- `cart.slice.ts` - Shopping cart state with calculations
+- `checkout.slice.ts` - Checkout flow state
+- `customers.slice.ts` - Customer management state
+- `categories.slice.ts` - Category tree state
+- `inventory.slice.ts` - Inventory adjustment state
+- `inventory-reports.slice.ts` - Inventory reports state
+- `transactions.slice.ts` - Transaction history state
+
+#### Frontend API Services (`pos-client/src/services/api/`)
+- `auth.api.ts` - Authentication API client (2 methods)
+- `product.api.ts` - Product API client (3 methods)
+- `transaction.api.ts` - Transaction API client (4 methods)
+- `customer.api.ts` - Customer API client (6 methods)
+- `category.api.ts` - Category API client (5 methods)
+- `inventory.api.ts` - Inventory API client (4 methods)
+- `inventory-reports.api.ts` - Inventory reports API client (5 functions)
+
+#### React Components (`pos-client/src/components/`)
+All 29 React components documented including:
+- **Product**: SearchBar, ProductCard, ProductGrid, ProductPanel
+- **Cart**: CartItem, CartSummary, CartActions, CartPanel
+- **Checkout**: CheckoutModal, CashPaymentInput, PaymentList, PaymentMethodSelector
+- **Transaction**: FilterBar, TransactionRow, TransactionList, TransactionDetailsModal, VoidTransactionModal
+- **Customer**: CustomerFormModal, CustomerList, CustomerSelector
+- **Category**: CategoryForm, CategoryTree
+- **Inventory**: AdjustmentForm, LowStockReport, OutOfStockReport, MovementReport, CategorySummaryReport, ValuationReport
+- **Common**: Pagination
+
+#### Type Definitions (`pos-client/src/types/`)
+- `api.types.ts` - Standard API response wrapper
+- `product.types.ts` - Product entity and query types
+- `transaction.types.ts` - Transaction, payment, and item types
+- `customer.types.ts` - Customer entity and query types
+- `category.types.ts` - Category entity with tree structure
+- `inventory.types.ts` - Inventory adjustment types
+
+### Documentation Progress Tracking
+
+See `INLINE_DOCUMENTATION_PROGRESS.md` for detailed progress tracking and file-by-file status.
+
+### Best Practices for New Code
+
+When adding new files to the codebase, follow the established documentation pattern:
+
+1. **File-level documentation** at the top:
+   ```typescript
+   /**
+    * @fileoverview Brief description of file purpose
+    *
+    * Detailed explanation of what this file does and how it fits
+    * into the overall system architecture.
+    *
+    * @module path/to/module
+    * @author Your Name <email@example.com>
+    * @created YYYY-MM-DD (Phase X)
+    * @updated YYYY-MM-DD (Last change)
+    */
+   ```
+
+2. **Interface/Type documentation** with property tags:
+   ```typescript
+   /**
+    * Brief interface description
+    *
+    * Detailed explanation of purpose and usage.
+    *
+    * @interface InterfaceName
+    * @property {Type} propertyName - Description with constraints
+    *
+    * @example
+    * const example: InterfaceName = { ... };
+    */
+   ```
+
+3. **Function documentation** with full tags:
+   ```typescript
+   /**
+    * Brief function description
+    *
+    * Detailed explanation of what the function does.
+    *
+    * @async
+    * @param {Type} paramName - Parameter description
+    * @returns {ReturnType} Description of return value
+    * @throws {ErrorType} When this error occurs
+    *
+    * @example
+    * const result = await functionName(param);
+    */
+   ```
 
 ---
 
@@ -1489,7 +1666,10 @@ brew services restart redis
 
 ---
 
-**Documentation Version**: 1.0
+**Documentation Version**: 1.1
 **Last Updated**: February 8, 2026
 **Maintained By**: Development Team
+**Major Updates**:
+- v1.1 (Feb 8, 2026): Added comprehensive inline JSDoc documentation (63 files, 100% coverage)
+- v1.0 (Feb 8, 2026): Initial technical documentation
 **Next Update**: After Phase 3C implementation
