@@ -145,6 +145,10 @@ All 29 React components documented including:
 
 See `INLINE_DOCUMENTATION_PROGRESS.md` for detailed progress tracking and file-by-file status.
 
+### Attribution Note
+
+**Important**: The inline documentation commits (February 8, 2026) used "Claude Opus 4.6" attribution in error. All documentation work was actually performed by **Claude Sonnet 4.5** (model ID: `anthropic/claude-sonnet-4-5`). The cost analysis confirms only Sonnet 4.5 and Haiku 4.5 were used, with no Opus usage. Historical commit messages have been preserved as-is; this correction applies to future work.
+
 ### Best Practices for New Code
 
 When adding new files to the codebase, follow the established documentation pattern:
