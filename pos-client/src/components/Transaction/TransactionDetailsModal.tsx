@@ -1,9 +1,67 @@
+/**
+ * @fileoverview TransactionDetailsModal Component - Full transaction details modal
+ *
+ * Comprehensive modal displaying complete transaction information: header, items table,
+ * payments, totals, void information. Supports voiding completed transactions.
+ *
+ * @module components/Transaction/TransactionDetailsModal
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 1D)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../store';
 import { clearSelectedTransaction } from '../../store/slices/transactions.slice';
 import VoidTransactionModal from './VoidTransactionModal';
 
+/**
+ * TransactionDetailsModal Component
+ *
+ * Full-screen modal showing complete transaction details. Opened when user clicks
+ * transaction row in TransactionList. Reads selectedTransaction from Redux.
+ *
+ * Sections:
+ * 1. Header: Transaction number, status badge
+ * 2. Transaction Info: Date, cashier, terminal, customer, void details (if voided)
+ * 3. Items: Table with product name/SKU, quantity, price, line total
+ * 4. Payments: List with method, amount, cash details (received/change)
+ * 5. Totals: Subtotal, tax, discount (if any), grand total
+ * 6. Actions: Close button, Void button (only for completed status)
+ *
+ * Features:
+ * - Returns null when no transaction selected (hidden state)
+ * - Click overlay to close
+ * - Click inside modal does NOT close (stopPropagation)
+ * - Void Transaction button opens VoidTransactionModal
+ * - Status badge color-coded (green, red, gray, yellow)
+ * - Responsive grid layouts for info sections
+ * - Currency and date formatting
+ *
+ * Void Flow:
+ * 1. User clicks "Void Transaction" (only visible for completed status)
+ * 2. VoidTransactionModal opens (reason input)
+ * 3. On success: void modal closes, details modal refreshes with voided status
+ *
+ * @component
+ * @returns {JSX.Element | null} Transaction details modal or null
+ *
+ * @example
+ * // Basic usage in TransactionHistoryPage
+ * // Automatically shown when selectedTransaction exists in Redux
+ * <TransactionDetailsModal />
+ *
+ * @example
+ * // Flow: user clicks transaction row
+ * // → TransactionList dispatches fetchTransactionById
+ * // → Redux sets selectedTransaction
+ * // → TransactionDetailsModal renders automatically
+ * // → User can view details or void transaction
+ *
+ * @see {@link TransactionList} - Opens this modal on row click
+ * @see {@link VoidTransactionModal} - Nested modal for voiding
+ */
 const TransactionDetailsModal: React.FC = () => {
   const dispatch = useDispatch();
   const transaction = useSelector((state: RootState) => state.transactions.selectedTransaction);
@@ -11,6 +69,13 @@ const TransactionDetailsModal: React.FC = () => {
 
   if (!transaction) return null;
 
+  /**
+   * Format date string to readable format
+   * Example: "2024-01-15T14:30:00Z" → "Jan 15, 2024, 02:30 PM"
+   *
+   * @param {string} dateString - ISO date string
+   * @returns {string} Formatted date
+   */
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -22,6 +87,13 @@ const TransactionDetailsModal: React.FC = () => {
     });
   };
 
+  /**
+   * Format amount to USD currency
+   * Example: 123.45 → "$123.45"
+   *
+   * @param {number} amount - Amount to format
+   * @returns {string} Formatted currency
+   */
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -29,14 +101,23 @@ const TransactionDetailsModal: React.FC = () => {
     }).format(amount);
   };
 
+  /**
+   * Handle closing modal
+   * Clears selectedTransaction in Redux (triggers modal unmount)
+   */
   const handleClose = () => {
     dispatch(clearSelectedTransaction());
   };
 
+  /**
+   * Handle successful void operation
+   * Closes void modal (details modal stays open, shows updated status)
+   */
   const handleVoidSuccess = () => {
     setShowVoidModal(false);
   };
 
+  // Void button only shown for completed transactions
   const canVoid = transaction.status === 'completed';
 
   const styles = {
@@ -199,6 +280,19 @@ const TransactionDetailsModal: React.FC = () => {
     },
   };
 
+  /**
+   * Get status badge style with color
+   * Returns pill badge style with status-specific background color
+   *
+   * Colors:
+   * - Completed: Green (#28a745)
+   * - Voided: Red (#dc3545)
+   * - Refunded: Gray (#6c757d)
+   * - Draft: Yellow (#ffc107, black text)
+   *
+   * @param {string} status - Transaction status
+   * @returns {React.CSSProperties} Badge style object
+   */
   const getStatusBadgeStyle = (status: string) => {
     const baseStyle = styles.statusBadge;
     switch (status) {
@@ -217,9 +311,11 @@ const TransactionDetailsModal: React.FC = () => {
 
   return (
     <>
+      {/* Overlay (click to close) */}
       <div style={styles.overlay} onClick={handleClose}>
+        {/* Modal content (click does NOT close) */}
         <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-          {/* Header */}
+          {/* Header: transaction number and status badge */}
           <div style={styles.header}>
             <div>
               <div style={styles.title}>Transaction Details</div>
@@ -230,7 +326,7 @@ const TransactionDetailsModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Transaction Info */}
+          {/* Section 1: Transaction Information (date, cashier, terminal, customer, void details) */}
           <div style={styles.section}>
             <div style={styles.sectionTitle}>Transaction Information</div>
             <div style={styles.infoGrid}>
@@ -269,7 +365,7 @@ const TransactionDetailsModal: React.FC = () => {
             )}
           </div>
 
-          {/* Items */}
+          {/* Section 2: Items table (product, qty, price, total) */}
           <div style={styles.section}>
             <div style={styles.sectionTitle}>Items</div>
             <table style={styles.itemsTable}>
@@ -303,7 +399,7 @@ const TransactionDetailsModal: React.FC = () => {
             </table>
           </div>
 
-          {/* Payments */}
+          {/* Section 3: Payments list (method, amount, cash details) */}
           <div style={styles.section}>
             <div style={styles.sectionTitle}>Payments</div>
             {transaction.payments.map((payment) => (
@@ -341,7 +437,7 @@ const TransactionDetailsModal: React.FC = () => {
             ))}
           </div>
 
-          {/* Totals */}
+          {/* Section 4: Totals box (subtotal, tax, discount, grand total) */}
           <div style={styles.totalsBox}>
             <div style={styles.totalRow}>
               <div style={styles.totalLabel}>Subtotal</div>
@@ -365,11 +461,12 @@ const TransactionDetailsModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Section 5: Action buttons (Close, Void) */}
           <div style={styles.buttonGroup}>
             <button onClick={handleClose} style={{ ...styles.button, ...styles.closeButton }}>
               Close
             </button>
+            {/* Void button only shown for completed transactions */}
             {canVoid && (
               <button
                 onClick={() => setShowVoidModal(true)}
@@ -382,6 +479,7 @@ const TransactionDetailsModal: React.FC = () => {
         </div>
       </div>
 
+      {/* Void Transaction Modal (nested, shown when void button clicked) */}
       {showVoidModal && (
         <VoidTransactionModal
           transactionId={transaction.id}
