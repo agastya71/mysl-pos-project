@@ -59,7 +59,7 @@ export class CustomerController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        next(new AppError('Invalid query parameters', 400, error.errors));
+        next(new AppError(400, 'INVALID_QUERY_PARAMS', 'Invalid query parameters', error.errors));
       } else {
         next(error);
       }
@@ -115,7 +115,7 @@ export class CustomerController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        next(new AppError('Invalid customer data', 400, error.errors));
+        next(new AppError(400, 'INVALID_CUSTOMER_DATA', 'Invalid customer data', error.errors));
       } else {
         next(error);
       }
@@ -154,7 +154,7 @@ export class CustomerController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        next(new AppError('Invalid customer data', 400, error.errors));
+        next(new AppError(400, 'INVALID_CUSTOMER_DATA', 'Invalid customer data', error.errors));
       } else {
         next(error);
       }
@@ -194,7 +194,7 @@ export class CustomerController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        next(new AppError('Invalid search query', 400, error.errors));
+        next(new AppError(400, 'INVALID_SEARCH_QUERY', 'Invalid search query', error.errors));
       } else {
         next(error);
       }
