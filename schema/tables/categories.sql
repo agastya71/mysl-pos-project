@@ -3,6 +3,7 @@
 
 CREATE TABLE categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category_number VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     parent_category_id UUID REFERENCES categories(id),

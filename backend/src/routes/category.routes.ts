@@ -1,16 +1,51 @@
+/**
+ * Category Routes
+ *
+ * Routes for category management
+ */
+
 import { Router } from 'express';
-import { ProductController } from '../controllers/product.controller';
+import * as categoryController from '../controllers/category.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = Router();
-const productController = new ProductController();
 
 // All category routes require authentication
 router.use(authenticateToken);
 
-// Category routes
-router.get('/', (req, res, next) => {
-  productController.getCategories(req, res).catch(next);
-});
+/**
+ * @route   POST /api/v1/categories
+ * @desc    Create a new category
+ * @access  Private
+ */
+router.post('/', categoryController.createCategory);
+
+/**
+ * @route   GET /api/v1/categories
+ * @desc    Get all categories (tree structure)
+ * @access  Private
+ */
+router.get('/', categoryController.getCategories);
+
+/**
+ * @route   GET /api/v1/categories/:id
+ * @desc    Get category by ID
+ * @access  Private
+ */
+router.get('/:id', categoryController.getCategoryById);
+
+/**
+ * @route   PUT /api/v1/categories/:id
+ * @desc    Update category
+ * @access  Private
+ */
+router.put('/:id', categoryController.updateCategory);
+
+/**
+ * @route   DELETE /api/v1/categories/:id
+ * @desc    Delete category (soft delete)
+ * @access  Private
+ */
+router.delete('/:id', categoryController.deleteCategory);
 
 export default router;
