@@ -1,27 +1,36 @@
--- Inventory Adjustments Table
--- Purpose: Track all inventory quantity changes with audit trail
+/**
+ * Inventory Adjustments Table (Phase 3B)
+ *
+ * Tracks all manual inventory adjustments with complete audit trail
+ * Supports: damage, theft, found items, corrections, and initial stock
+ */
 
-CREATE TABLE inventory_adjustments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    product_id UUID REFERENCES products(id),
-    adjustment_type VARCHAR(50) NOT NULL,
-    -- Types: restock, damage, theft, correction, return, shrinkage, transfer, reconciliation
-    quantity_change INTEGER NOT NULL,
-    quantity_before INTEGER NOT NULL,
-    quantity_after INTEGER NOT NULL,
-    reason TEXT,
-    reference_number VARCHAR(100), -- PO number, transfer number, etc.
-    reconciliation_id UUID REFERENCES inventory_reconciliations(id),
-    adjusted_by UUID REFERENCES users(id),
-    approved_by UUID REFERENCES users(id),
-    adjustment_date TIMESTAMP DEFAULT NOW(),
-    created_at TIMESTAMP DEFAULT NOW(),
-
-    CONSTRAINT valid_adjustment_type CHECK (adjustment_type IN ('restock', 'damage', 'theft', 'correction', 'return', 'shrinkage', 'transfer', 'reconciliation'))
+CREATE TABLE IF NOT EXISTS inventory_adjustments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  adjustment_number VARCHAR(50) UNIQUE NOT NULL,
+  product_id UUID NOT NULL REFERENCES products(id),
+  adjustment_type VARCHAR(50) NOT NULL CHECK (adjustment_type IN ('damage', 'theft', 'found', 'correction', 'initial')),
+  quantity_change INTEGER NOT NULL,
+  old_quantity INTEGER NOT NULL,
+  new_quantity INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  notes TEXT,
+  adjusted_by UUID NOT NULL REFERENCES users(id),
+  adjustment_date TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Indexes
-CREATE INDEX idx_inventory_adjustments_product ON inventory_adjustments(product_id);
-CREATE INDEX idx_inventory_adjustments_date ON inventory_adjustments(adjustment_date);
-CREATE INDEX idx_inventory_adjustments_type ON inventory_adjustments(adjustment_type);
-CREATE INDEX idx_inventory_adjustments_reconciliation ON inventory_adjustments(reconciliation_id);
+-- Indexes for efficient querying
+CREATE INDEX IF NOT EXISTS idx_inv_adj_product ON inventory_adjustments(product_id);
+CREATE INDEX IF NOT EXISTS idx_inv_adj_date ON inventory_adjustments(adjustment_date);
+CREATE INDEX IF NOT EXISTS idx_inv_adj_type ON inventory_adjustments(adjustment_type);
+CREATE INDEX IF NOT EXISTS idx_inv_adj_adjusted_by ON inventory_adjustments(adjusted_by);
+
+-- Comments
+COMMENT ON TABLE inventory_adjustments IS 'Manual inventory adjustments with complete audit trail (Phase 3B)';
+COMMENT ON COLUMN inventory_adjustments.adjustment_number IS 'Auto-generated unique adjustment number (ADJ-XXXXXX)';
+COMMENT ON COLUMN inventory_adjustments.adjustment_type IS 'Type: damage, theft, found, correction, initial';
+COMMENT ON COLUMN inventory_adjustments.quantity_change IS 'Change in quantity (positive or negative)';
+COMMENT ON COLUMN inventory_adjustments.old_quantity IS 'Quantity before adjustment';
+COMMENT ON COLUMN inventory_adjustments.new_quantity IS 'Quantity after adjustment';
+COMMENT ON COLUMN inventory_adjustments.reason IS 'Required explanation for the adjustment';
