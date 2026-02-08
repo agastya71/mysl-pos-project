@@ -1,12 +1,47 @@
+/**
+ * @fileoverview ProductGrid Component - Responsive grid of product cards
+ *
+ * Displays products in responsive grid layout using ProductCard components.
+ * Shows empty state when no products match search.
+ *
+ * @module components/Product/ProductGrid
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 1B)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React from 'react';
 import { Product } from '../../types/product.types';
 import ProductCard from './ProductCard';
 
+/**
+ * ProductGrid component props
+ *
+ * @interface ProductGridProps
+ * @property {Product[]} products - Array of products to display
+ * @property {function} onAddToCart - Callback when product added to cart
+ */
 interface ProductGridProps {
   products: Product[];
   onAddToCart: (product: Product) => void;
 }
 
+/**
+ * ProductGrid Component
+ *
+ * Responsive grid displaying product cards. Uses CSS Grid with auto-fill
+ * for responsive columns (minimum 150px per card).
+ *
+ * @component
+ * @param {ProductGridProps} props - Component props
+ * @returns {JSX.Element} Product grid or empty state
+ *
+ * @example
+ * <ProductGrid
+ *   products={products}
+ *   onAddToCart={handleAddToCart}
+ * />
+ */
 const ProductGrid: React.FC<ProductGridProps> = ({ products, onAddToCart }) => {
   if (products.length === 0) {
     return (

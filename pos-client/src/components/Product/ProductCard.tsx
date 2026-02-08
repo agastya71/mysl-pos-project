@@ -1,16 +1,85 @@
+/**
+ * @fileoverview ProductCard Component - Individual product card for POS grid display
+ *
+ * Displays product information in a card format with image, details, and Add to Cart button.
+ * Used in ProductGrid for POS product selection interface.
+ *
+ * Features:
+ * - Product image with fallback placeholder
+ * - Product name (2-line ellipsis), SKU, price, stock level
+ * - Add to Cart button (disabled when out of stock)
+ * - Hover effects (card shadow/transform)
+ * - Out of stock state handling
+ *
+ * Card Layout:
+ * - Image: 120px height, cover fit (or "No Image" placeholder)
+ * - Content: Product name, SKU, price, stock
+ * - Footer: Price + stock on left, Add button on right
+ *
+ * Button States:
+ * - In stock: Blue background (#007bff), "Add" label, clickable
+ * - Out of stock: Gray background (#ccc), "Out of Stock" label, disabled
+ *
+ * @module components/Product/ProductCard
+ * @requires react
+ * @requires ../../types/product.types
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 1B)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React from 'react';
 import { Product } from '../../types/product.types';
 
+/**
+ * ProductCard component props
+ *
+ * @interface ProductCardProps
+ * @property {Product} product - Product data to display
+ * @property {function} onAddToCart - Callback when Add button clicked
+ */
 interface ProductCardProps {
+  /** Product data including name, price, SKU, stock, image */
   product: Product;
+  /** Callback fired when user clicks Add button (passes product object) */
   onAddToCart: (product: Product) => void;
 }
 
+/**
+ * ProductCard Component
+ *
+ * Presentational card component displaying product for POS selection.
+ * Shows product image, details, and Add to Cart button.
+ *
+ * @component
+ * @param {ProductCardProps} props - Component props
+ * @returns {JSX.Element} Rendered product card
+ *
+ * @example
+ * // Basic usage in ProductGrid
+ * <ProductCard
+ *   product={product}
+ *   onAddToCart={handleAddToCart}
+ * />
+ *
+ * @example
+ * // Grid layout
+ * <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+ *   {products.map(product => (
+ *     <ProductCard
+ *       key={product.id}
+ *       product={product}
+ *       onAddToCart={handleAddToCart}
+ *     />
+ *   ))}
+ * </div>
+ */
 const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const isOutOfStock = product.quantity_in_stock === 0;
 
   return (
     <div style={styles.card}>
+      {/* Product image or placeholder */}
       <div style={styles.imageContainer}>
         {product.image_url ? (
           <img src={product.image_url} alt={product.name} style={styles.image} />
@@ -20,15 +89,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
           </div>
         )}
       </div>
+
+      {/* Product details */}
       <div style={styles.content}>
         <h3 style={styles.name}>{product.name}</h3>
         <p style={styles.sku}>SKU: {product.sku}</p>
+
+        {/* Footer: Price/stock + Add button */}
         <div style={styles.footer}>
           <div>
             <p style={styles.price}>${Number(product.base_price).toFixed(2)}</p>
-            <p style={styles.stock}>
-              Stock: {product.quantity_in_stock}
-            </p>
+            <p style={styles.stock}>Stock: {product.quantity_in_stock}</p>
           </div>
           <button
             onClick={() => onAddToCart(product)}

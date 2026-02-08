@@ -1,13 +1,52 @@
 /**
- * Movement Report Component
+ * @fileoverview MovementReport Component - Inventory movement history with date filters
  *
- * Displays inventory movements over a date range
+ * Table report showing inventory changes over date range from sales and adjustments.
+ * Includes date range filters for custom period selection.
+ *
+ * @module components/Inventory/MovementReport
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 3C)
+ * @updated 2026-02-08 (Documentation)
  */
 
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchMovementReport, setMovementFilters } from '../../store/slices/inventory-reports.slice';
 
+/**
+ * MovementReport Component
+ *
+ * Displays inventory movements (sales and adjustments) over customizable date range.
+ * Includes filter controls for start/end date selection.
+ * Reads data from inventoryReports.movement Redux slice.
+ *
+ * Table Columns:
+ * - SKU
+ * - Product Name
+ * - Category
+ * - Starting Stock
+ * - Sales
+ * - Adjustments
+ * - Ending Stock
+ * - Net Change
+ *
+ * Features:
+ * - Date range filter controls (start date, end date)
+ * - Apply Filters button
+ * - Loading state
+ * - Error state (red text)
+ * - Empty state ("No movements in selected period")
+ * - Auto-loads on mount with default filters
+ *
+ * @component
+ * @returns {JSX.Element} Movement report with filters and table
+ *
+ * @example
+ * <MovementReport />
+ *
+ * @see {@link InventoryReportsPage} - Parent page
+ */
 const MovementReport: React.FC = () => {
   const dispatch = useAppDispatch();
   const { data, filters, isLoading, error } = useAppSelector(

@@ -1,14 +1,84 @@
+/**
+ * @fileoverview CategoryForm Component - Create/edit category modal form
+ *
+ * Modal form for creating or editing categories with hierarchical parent selection.
+ * Supports category name, description, parent, and display order.
+ *
+ * @module components/Category/CategoryForm
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 3A)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React, { useState, CSSProperties } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { createCategory, updateCategory } from '../../store/slices/categories.slice';
 import { Category } from '../../types/category.types';
 
+/**
+ * CategoryForm component props
+ *
+ * @interface CategoryFormProps
+ * @property {Category} [category] - Category to edit (undefined for create mode)
+ * @property {function} onClose - Callback when modal closes
+ * @property {function} onSuccess - Callback when save succeeds (before close)
+ */
 interface CategoryFormProps {
   category?: Category;
   onClose: () => void;
   onSuccess: () => void;
 }
 
+/**
+ * CategoryForm Component
+ *
+ * Modal form for creating/editing categories with hierarchical parent selection.
+ * Dual mode: create (no category prop) or edit (with category prop).
+ *
+ * Form Fields:
+ * - Category Name * (required, text input, auto-focus)
+ * - Description (textarea, optional, 3 rows)
+ * - Parent Category (dropdown with indented hierarchy, optional)
+ * - Display Order (number input, min 0, default 0)
+ *
+ * Features:
+ * - Excludes current category from parent dropdown (prevents circular refs)
+ * - Flattens tree to dropdown with visual indentation (spaces)
+ * - "-- None (Root Category) --" option for root categories
+ * - Loading state ("Saving..." button text)
+ * - Error display (red box with error message)
+ * - Cancel and Save buttons
+ * - Click overlay to close (cancel)
+ *
+ * Parent Dropdown:
+ * - Shows all categories except current (in edit mode)
+ * - Indents subcategories with spaces (2 spaces per depth level)
+ * - Example: "Electronics", "  Smartphones", "    iPhone"
+ *
+ * @component
+ * @param {CategoryFormProps} props - Component props
+ * @returns {JSX.Element} Category form modal
+ *
+ * @example
+ * // Create mode
+ * const [showCreate, setShowCreate] = useState(false);
+ * {showCreate && (
+ *   <CategoryForm
+ *     onClose={() => setShowCreate(false)}
+ *     onSuccess={() => { fetchCategories(); setShowCreate(false); }}
+ *   />
+ * )}
+ *
+ * @example
+ * // Edit mode
+ * <CategoryForm
+ *   category={selectedCategory}
+ *   onClose={() => setEditing(null)}
+ *   onSuccess={() => { fetchCategories(); setEditing(null); }}
+ * />
+ *
+ * @see {@link CategoriesPage} - Parent page using this form
+ */
 export const CategoryForm: React.FC<CategoryFormProps> = ({
   category,
   onClose,
@@ -26,6 +96,13 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * Handle form submission
+   * Dispatches create or update, calls onSuccess, closes modal
+   *
+   * @async
+   * @param {React.FormEvent} e - Form submit event
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -46,7 +123,14 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
     }
   };
 
-  // Flatten categories for parent dropdown (excluding current category and descendants)
+  /**
+   * Flatten category tree to flat list with depth
+   * Excludes current category (in edit mode) to prevent circular references
+   *
+   * @param {any[]} cats - Category tree array
+   * @param {number} depth - Current depth level (for indentation)
+   * @returns {any[]} Flat array with depth property
+   */
   const flattenCategories = (cats: any[], depth = 0): any[] => {
     return cats.reduce((acc, cat) => {
       if (cat.id === category?.id) return acc; // Skip current category

@@ -1,3 +1,15 @@
+/**
+ * @fileoverview CustomerSelector Component - Customer search and selection for checkout
+ *
+ * Searchable dropdown for selecting customer during checkout. Supports debounced search,
+ * creates new customer inline, shows selected customer with clear button.
+ *
+ * @module components/Customer/CustomerSelector
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 2)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
@@ -5,11 +17,73 @@ import { searchCustomers, clearSearchResults } from '../../store/slices/customer
 import { CustomerSearchResult } from '../../types/customer.types';
 import CustomerFormModal from './CustomerFormModal';
 
+/**
+ * CustomerSelector component props
+ *
+ * @interface CustomerSelectorProps
+ * @property {string | null} selectedCustomerId - Currently selected customer ID (or null)
+ * @property {function} onSelect - Callback when customer selected or cleared
+ */
 interface CustomerSelectorProps {
   selectedCustomerId: string | null;
   onSelect: (customer: CustomerSearchResult | null) => void;
 }
 
+/**
+ * CustomerSelector Component
+ *
+ * Searchable customer selector for checkout flow. Dual-mode display:
+ * selected customer (blue box with Clear button) or search input (with "+ New" button).
+ *
+ * Features:
+ * - Debounced search (300ms delay, min 2 characters)
+ * - Search by name, email, phone, or customer number
+ * - Dropdown with search results (max height 300px, scrollable)
+ * - "+ Create New Customer" option in dropdown (after results)
+ * - "+ New" button next to search input
+ * - Selected customer display: name, customer#, contact info, Clear button
+ * - Click outside to close dropdown
+ * - Auto-select newly created customer
+ *
+ * Search Behavior:
+ * - < 2 characters: dropdown closed, no search
+ * - ≥ 2 characters: debounced API search (300ms), dropdown opens
+ * - Empty results: "No customers found" message
+ *
+ * Views:
+ * 1. Selected: Blue box with customer name, number, contact, Clear button
+ * 2. Search: Input field + "+ New" button, dropdown with results/create option
+ *
+ * @component
+ * @param {CustomerSelectorProps} props - Component props
+ * @returns {JSX.Element} Customer selector with search/selected views
+ *
+ * @example
+ * // Basic usage in CheckoutModal
+ * const [customer, setCustomer] = useState<CustomerSearchResult | null>(null);
+ * <CustomerSelector
+ *   selectedCustomerId={customer?.id || null}
+ *   onSelect={setCustomer}
+ * />
+ *
+ * @example
+ * // Search flow
+ * // 1. User types "john" in search input
+ * // 2. After 300ms, API searches for customers
+ * // 3. Dropdown shows matching results
+ * // 4. User clicks result → selected view shown
+ * // 5. User clicks Clear → search view shown
+ *
+ * @example
+ * // Create flow
+ * // 1. User clicks "+ New" button (or "+ Create New Customer" in dropdown)
+ * // 2. CustomerFormModal opens in create mode
+ * // 3. User fills form, clicks Create
+ * // 4. Customer created, auto-selected, modal closes
+ *
+ * @see {@link CheckoutModal} - Parent component using this selector
+ * @see {@link CustomerFormModal} - Create modal opened by "+ New" button
+ */
 const CustomerSelector: React.FC<CustomerSelectorProps> = ({ selectedCustomerId, onSelect }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { searchResults, items } = useSelector((state: RootState) => state.customers);
@@ -20,7 +94,10 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({ selectedCustomerId,
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Find selected customer name for display
+  /**
+   * Find and set selected customer details for display
+   * Converts selectedCustomerId to full CustomerSearchResult object
+   */
   useEffect(() => {
     if (selectedCustomerId) {
       const customer = items.find((c) => c.id === selectedCustomerId);
@@ -38,7 +115,10 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({ selectedCustomerId,
     }
   }, [selectedCustomerId, items]);
 
-  // Close dropdown when clicking outside
+  /**
+   * Close dropdown when clicking outside
+   * Uses ref to detect clicks outside component
+   */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -52,8 +132,11 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({ selectedCustomerId,
     };
   }, []);
 
-  // Debounced search
-  useEffect(() => {
+  /**
+   * Debounced search effect
+   * Waits 300ms after typing stops, then searches if query ≥ 2 chars
+   */
+  useEffect(() =>{
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
@@ -75,6 +158,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({ selectedCustomerId,
     };
   }, [searchQuery, dispatch]);
 
+  /** Handle customer selection from dropdown - sets selected, clears search, calls onSelect */
   const handleSelectCustomer = (customer: CustomerSearchResult) => {
     setSelectedCustomer(customer);
     setSearchQuery('');
@@ -83,6 +167,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({ selectedCustomerId,
     onSelect(customer);
   };
 
+  /** Handle clearing selected customer - resets state, calls onSelect(null) */
   const handleClearSelection = () => {
     setSelectedCustomer(null);
     setSearchQuery('');
@@ -90,6 +175,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({ selectedCustomerId,
     onSelect(null);
   };
 
+  /** Handle successful customer creation - auto-selects new customer, closes modal */
   const handleCreateSuccess = () => {
     setIsCreatingNew(false);
     // Optionally auto-select the newly created customer

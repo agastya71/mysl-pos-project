@@ -1,8 +1,56 @@
+/**
+ * @fileoverview FilterBar Component - Transaction search and filter controls
+ *
+ * Filter controls for transaction history: search by number, date range, and status.
+ * Local state management with Search/Clear buttons.
+ *
+ * @module components/Transaction/FilterBar
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 1D)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setFilters, fetchTransactions } from '../../store/slices/transactions.slice';
 import { RootState, AppDispatch } from '../../store';
 
+/**
+ * FilterBar Component
+ *
+ * Search and filter controls for transaction history page.
+ * Uses local state for inputs, updates Redux on Search button or Enter key.
+ *
+ * Filter Fields:
+ * - Transaction Number: Text search (partial match on transaction_number)
+ * - Start Date: Date picker (YYYY-MM-DD)
+ * - End Date: Date picker (YYYY-MM-DD)
+ * - Status: Dropdown (All, Completed, Voided, Refunded, Draft)
+ *
+ * Features:
+ * - Local state for all inputs (not synced until Search clicked)
+ * - Search button: Updates Redux filters, triggers fetchTransactions
+ * - Clear button: Resets all filters to empty/default, fetches all
+ * - Enter key on transaction number input triggers search
+ * - Responsive grid layout (auto-fit, min 200px columns)
+ *
+ * @component
+ * @returns {JSX.Element} Filter bar with search controls
+ *
+ * @example
+ * // Basic usage in TransactionHistoryPage
+ * <FilterBar />
+ * <TransactionList />
+ *
+ * @example
+ * // Search flow
+ * // 1. User types transaction number "TXN-000042"
+ * // 2. Selects date range (2024-01-01 to 2024-01-31)
+ * // 3. Clicks Search → Redux updated, API called with filters
+ * // 4. TransactionList shows filtered results
+ *
+ * @see {@link TransactionHistoryPage} - Parent page
+ */
 const FilterBar: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const filters = useSelector((state: RootState) => state.transactions.filters);
@@ -12,6 +60,10 @@ const FilterBar: React.FC = () => {
   const [localEndDate, setLocalEndDate] = useState(filters.endDate || '');
   const [localStatus, setLocalStatus] = useState(filters.status || '');
 
+  /**
+   * Handle Search button click
+   * Updates Redux filters from local state, triggers API fetch
+   */
   const handleSearch = () => {
     dispatch(
       setFilters({
@@ -24,6 +76,10 @@ const FilterBar: React.FC = () => {
     dispatch(fetchTransactions());
   };
 
+  /**
+   * Handle Clear Filters button click
+   * Resets local state and Redux filters, fetches all transactions
+   */
   const handleClear = () => {
     setLocalSearch('');
     setLocalStartDate('');
@@ -40,6 +96,12 @@ const FilterBar: React.FC = () => {
     dispatch(fetchTransactions());
   };
 
+  /**
+   * Handle Enter key in transaction number input
+   * Triggers search for better UX
+   *
+   * @param {React.KeyboardEvent} e - Keyboard event
+   */
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
@@ -110,7 +172,9 @@ const FilterBar: React.FC = () => {
 
   return (
     <div style={styles.container}>
+      {/* Filter inputs grid (responsive, auto-fit) */}
       <div style={styles.grid}>
+        {/* Transaction number search (Enter key enabled) */}
         <div style={styles.field}>
           <label style={styles.label}>Transaction Number</label>
           <input
@@ -123,6 +187,7 @@ const FilterBar: React.FC = () => {
           />
         </div>
 
+        {/* Start date filter */}
         <div style={styles.field}>
           <label style={styles.label}>Start Date</label>
           <input
@@ -133,6 +198,7 @@ const FilterBar: React.FC = () => {
           />
         </div>
 
+        {/* End date filter */}
         <div style={styles.field}>
           <label style={styles.label}>End Date</label>
           <input
@@ -143,6 +209,7 @@ const FilterBar: React.FC = () => {
           />
         </div>
 
+        {/* Status filter dropdown */}
         <div style={styles.field}>
           <label style={styles.label}>Status</label>
           <select
@@ -159,6 +226,7 @@ const FilterBar: React.FC = () => {
         </div>
       </div>
 
+      {/* Action buttons (Clear and Search) */}
       <div style={styles.buttonGroup}>
         <button
           onClick={handleClear}

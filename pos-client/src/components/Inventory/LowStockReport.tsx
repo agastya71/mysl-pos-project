@@ -1,12 +1,50 @@
 /**
- * Low Stock Report Component
+ * @fileoverview LowStockReport Component - Products at or below reorder level
  *
- * Displays products below reorder level
+ * Table report showing products that need reordering (current stock ≤ reorder level).
+ * Displays SKU, name, category, stock levels, recommended order quantity, value, and status badge.
+ *
+ * @module components/Inventory/LowStockReport
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 3C)
+ * @updated 2026-02-08 (Documentation)
  */
 
 import React from 'react';
 import { useAppSelector } from '../../store/hooks';
 
+/**
+ * LowStockReport Component
+ *
+ * Displays products at or below reorder level in table format.
+ * Reads data from inventoryReports.lowStock Redux slice.
+ *
+ * Table Columns:
+ * - SKU
+ * - Product Name
+ * - Category
+ * - Current Stock
+ * - Reorder Level
+ * - Recommended Order (reorder_level - current_stock)
+ * - Stock Value (currency formatted)
+ * - Status (badge: "Critical" red if stock=0, "Low Stock" yellow if stock>0)
+ *
+ * Features:
+ * - Loading state
+ * - Error state (red text)
+ * - Empty state (green checkmark, "No Low Stock Items")
+ * - Sorted by status (critical first)
+ * - Color-coded status badges
+ *
+ * @component
+ * @returns {JSX.Element} Low stock report table or state view
+ *
+ * @example
+ * // Basic usage in InventoryReportsPage
+ * <LowStockReport />
+ *
+ * @see {@link InventoryReportsPage} - Parent page with report tabs
+ */
 const LowStockReport: React.FC = () => {
   const { data, isLoading, error } = useAppSelector(
     (state) => state.inventoryReports.lowStock
