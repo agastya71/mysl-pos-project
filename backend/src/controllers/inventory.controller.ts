@@ -120,3 +120,123 @@ export const getProductHistory = async (
     next(error);
   }
 };
+
+// ========================================
+// PHASE 3C: INVENTORY REPORT HANDLERS
+// ========================================
+
+/**
+ * Get low stock products report
+ */
+export const getLowStockReport = async (
+  req: Request,
+  res: Response<ApiResponse<any>>,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const products = await inventoryService.getLowStockProducts();
+
+    res.json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get out of stock products report
+ */
+export const getOutOfStockReport = async (
+  req: Request,
+  res: Response<ApiResponse<any>>,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const products = await inventoryService.getOutOfStockProducts();
+
+    res.json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get inventory valuation report
+ */
+export const getValuationReport = async (
+  req: Request,
+  res: Response<ApiResponse<any>>,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const valuation = await inventoryService.getInventoryValuation();
+
+    res.json({
+      success: true,
+      data: valuation,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get inventory movement report
+ */
+export const getMovementReport = async (
+  req: Request,
+  res: Response<ApiResponse<any>>,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { start_date, end_date } = req.query;
+
+    if (!start_date || !end_date) {
+      res.status(400).json({
+        success: false,
+        error: {
+          message: 'start_date and end_date are required',
+          code: 'INVALID_INPUT',
+        },
+      });
+      return;
+    }
+
+    const movements = await inventoryService.getInventoryMovementReport(
+      start_date as string,
+      end_date as string
+    );
+
+    res.json({
+      success: true,
+      data: movements,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get category summary report
+ */
+export const getCategorySummaryReport = async (
+  req: Request,
+  res: Response<ApiResponse<any>>,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const summary = await inventoryService.getCategorySummary();
+
+    res.json({
+      success: true,
+      data: summary,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

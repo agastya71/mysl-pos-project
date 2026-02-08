@@ -11,6 +11,11 @@ import {
   getAdjustments,
   getAdjustmentById,
   getProductHistory,
+  getLowStockReport,
+  getOutOfStockReport,
+  getValuationReport,
+  getMovementReport,
+  getCategorySummaryReport,
 } from '../controllers/inventory.controller';
 
 const router = Router();
@@ -25,5 +30,12 @@ router.get('/adjustments/:id', getAdjustmentById);
 
 // Product history
 router.get('/products/:productId/history', getProductHistory);
+
+// Phase 3C: Report routes
+router.get('/reports/low-stock', getLowStockReport);
+router.get('/reports/out-of-stock', getOutOfStockReport);
+router.get('/reports/valuation', getValuationReport);
+router.get('/reports/movement', getMovementReport);
+router.get('/reports/category-summary', getCategorySummaryReport);
 
 export default router;
