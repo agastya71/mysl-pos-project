@@ -9,6 +9,7 @@ import CustomersPage from './pages/CustomersPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { InventoryHistoryPage } from './pages/InventoryHistoryPage';
+import InventoryReportsPage from './pages/InventoryReportsPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -65,6 +66,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <InventoryHistoryPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/inventory/reports"
+          element={
+            <PrivateRoute>
+              <InventoryReportsPage />
             </PrivateRoute>
           }
         />

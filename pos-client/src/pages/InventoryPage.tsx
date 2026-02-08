@@ -98,18 +98,32 @@ export const InventoryPage: React.FC = () => {
           </button>
           <h1 style={styles.title}>Inventory Management</h1>
         </div>
-        <button
-          onClick={() => navigate('/inventory/history')}
-          style={styles.historyButton}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#0056b3';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#007bff';
-          }}
-        >
-          📋 Adjustment History
-        </button>
+        <div style={styles.headerRight}>
+          <button
+            onClick={() => navigate('/inventory/history')}
+            style={styles.historyButton}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#0056b3';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#007bff';
+            }}
+          >
+            📋 Adjustment History
+          </button>
+          <button
+            onClick={() => navigate('/inventory/reports')}
+            style={styles.reportsButton}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#218838';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#28a745';
+            }}
+          >
+            📊 Reports
+          </button>
+        </div>
       </div>
 
       <div style={styles.container}>
@@ -273,9 +287,25 @@ const styles: Record<string, CSSProperties> = {
     color: '#333',
     margin: 0,
   },
+  headerRight: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'center',
+  },
   historyButton: {
     padding: '10px 24px',
     backgroundColor: '#007bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  reportsButton: {
+    padding: '10px 24px',
+    backgroundColor: '#28a745',
     color: 'white',
     border: 'none',
     borderRadius: '4px',
