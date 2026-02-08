@@ -1,5 +1,26 @@
+/**
+ * @fileoverview CartSummary Component - Cart totals breakdown display
+ *
+ * Displays cart financial summary with subtotal, discount, tax, and total.
+ * Shows discount only when applicable (discount_amount > 0).
+ *
+ * @module components/Cart/CartSummary
+ * @author Claude Opus 4.6 <noreply@anthropic.com>
+ * @created 2026-02-XX (Phase 1B)
+ * @updated 2026-02-08 (Documentation)
+ */
+
 import React from 'react';
 
+/**
+ * CartSummary component props
+ *
+ * @interface CartSummaryProps
+ * @property {number} subtotal - Sum of all line totals before tax/discount
+ * @property {number} tax_amount - Total tax amount
+ * @property {number} discount_amount - Total discount amount (optional, shown if > 0)
+ * @property {number} total_amount - Final total after tax and discount
+ */
 interface CartSummaryProps {
   subtotal: number;
   tax_amount: number;
@@ -7,6 +28,24 @@ interface CartSummaryProps {
   total_amount: number;
 }
 
+/**
+ * CartSummary Component
+ *
+ * Displays cart totals breakdown: subtotal, discount (if any), tax, total.
+ * Used in CartPanel to show financial summary before checkout.
+ *
+ * @component
+ * @param {CartSummaryProps} props - Cart totals
+ * @returns {JSX.Element} Cart summary display
+ *
+ * @example
+ * <CartSummary
+ *   subtotal={100.00}
+ *   tax_amount={8.00}
+ *   discount_amount={10.00}
+ *   total_amount={98.00}
+ * />
+ */
 const CartSummary: React.FC<CartSummaryProps> = ({ subtotal, tax_amount, discount_amount, total_amount }) => {
   return (
     <div style={styles.container}>
