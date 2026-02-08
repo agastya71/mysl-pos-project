@@ -165,32 +165,52 @@ pos-client/src/pages/CategoriesPage.tsx
 
 ## 🔄 Development Workflow
 
-1. **Start Services**:
-   ```bash
-   cd backend && npm run dev          # Terminal 1
-   cd pos-client && npm run dev:webpack  # Terminal 2
-   ```
+### 1. Start New Feature (ALWAYS use branch)
+```bash
+# Use helper script (recommended)
+./git-start-feature.sh phase-3b-inventory-adjustments
 
-2. **Run Tests**:
-   ```bash
-   cd backend && npm test
-   cd pos-client && npm test
-   ```
+# Or manually
+git checkout main
+git pull origin main
+git checkout -b feature/phase-3b-inventory-adjustments
+```
 
-3. **Test-Driven Development**:
-   - Run existing tests (baseline)
-   - Write tests for new feature
-   - Implement feature
-   - Run tests again (verify)
-   - Check coverage
+### 2. Start Services
+```bash
+cd backend && npm run dev          # Terminal 1
+cd pos-client && npm run dev:webpack  # Terminal 2
+```
 
-4. **Commit Changes**:
-   ```bash
-   git status
-   git add .
-   git commit -m "feat: implement Phase 3A category management"
-   git push
-   ```
+### 3. Run Tests (TDD)
+```bash
+cd backend && npm test
+cd pos-client && npm test
+```
+
+### 4. Test-Driven Development
+- Run existing tests (baseline)
+- Write tests for new feature
+- Implement feature
+- Run tests again (verify)
+- Check coverage
+
+### 5. Commit Changes
+```bash
+git status
+git add <files>
+git commit -m "feat: implement inventory adjustments"
+
+# Push feature branch
+git push -u origin feature/phase-3b-inventory-adjustments
+
+# Merge to main (after testing)
+git checkout main
+git merge feature/phase-3b-inventory-adjustments
+git branch -d feature/phase-3b-inventory-adjustments
+```
+
+**IMPORTANT**: Never commit directly to main. Repository has pre-commit hook that blocks direct commits.
 
 ---
 
