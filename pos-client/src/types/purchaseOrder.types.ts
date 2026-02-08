@@ -18,7 +18,7 @@ export type POStatus =
 /**
  * Order type classification
  */
-export type POOrderType = 'standard' | 'urgent' | 'drop_ship';
+export type POOrderType = 'purchase' | 'donation' | 'consignment';
 
 /**
  * Main purchase order entity
@@ -34,7 +34,7 @@ export interface PurchaseOrder {
   delivery_date: string | null;
 
   // Financial fields
-  subtotal_amount: number;
+  subtotal: number;
   tax_amount: number;
   shipping_cost: number;
   other_charges: number;
@@ -128,7 +128,7 @@ export interface DraftPO {
   items: DraftPOItem[];
 
   // Calculated totals
-  subtotal_amount: number;
+  subtotal: number;
   tax_amount: number;
   shipping_cost: number;
   other_charges: number;

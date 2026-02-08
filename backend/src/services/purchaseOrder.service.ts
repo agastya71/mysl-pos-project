@@ -97,16 +97,16 @@ export async function createPO(
     const poResult = await client.query(
       `INSERT INTO purchase_orders (
         vendor_id, order_type, status, order_date,
-        expected_delivery_date, subtotal_amount, tax_amount,
+        expected_delivery_date, subtotal, tax_amount,
         shipping_cost, other_charges, discount_amount, total_amount,
         shipping_address, billing_address, payment_terms, payment_status,
-        amount_paid, created_by, notes
+        created_by, notes
       ) VALUES (
         $1, $2, 'draft', CURRENT_DATE,
         $3, $4, $5,
         $6, $7, $8, $9,
-        $10, $11, $12, 'pending',
-        0, $13, $14
+        $10, $11, $12, 'unpaid',
+        $13, $14
       ) RETURNING *`,
       [
         data.vendor_id,
@@ -519,7 +519,7 @@ export async function updatePO(
     }
 
     // Always update totals
-    updateFields.push(`subtotal_amount = $${paramIndex++}`);
+    updateFields.push(`subtotal = $${paramIndex++}`);
     updateParams.push(subtotal);
 
     updateFields.push(`tax_amount = $${paramIndex++}`);

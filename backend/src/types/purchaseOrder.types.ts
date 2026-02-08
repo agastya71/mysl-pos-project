@@ -21,9 +21,10 @@ export type POStatus =
  * Order type classification
  */
 export type POOrderType =
-  | 'standard'    // Regular inventory replenishment
-  | 'urgent'      // Rush order with expedited shipping
-  | 'drop_ship';  // Direct ship to customer
+  | 'purchase'     // Regular purchase order for inventory
+  | 'donation'     // Donated goods
+  | 'consignment'  // Consignment inventory
+  | 'transfer';    // Inter-store transfer
 
 /**
  * Main purchase order entity (matches purchase_orders table)
@@ -39,7 +40,7 @@ export interface PurchaseOrder {
   delivery_date: Date | null;
 
   // Financial fields
-  subtotal_amount: number;
+  subtotal: number;
   tax_amount: number;
   shipping_cost: number;
   other_charges: number;
@@ -52,8 +53,7 @@ export interface PurchaseOrder {
 
   // Payment tracking
   payment_terms: string | null;
-  payment_status: 'pending' | 'partial' | 'paid' | null;
-  amount_paid: number;
+  payment_status: 'unpaid' | 'partial' | 'paid' | 'donation' | 'na' | null;
 
   // Workflow tracking
   created_by: string;

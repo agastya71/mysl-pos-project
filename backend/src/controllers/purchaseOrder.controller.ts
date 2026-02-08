@@ -23,7 +23,7 @@ const POItemSchema = z.object({
 
 const CreatePOSchema = z.object({
   vendor_id: z.string().uuid('Invalid vendor ID'),
-  order_type: z.enum(['standard', 'urgent', 'drop_ship']),
+  order_type: z.enum(['purchase', 'donation', 'consignment', 'transfer']),
   expected_delivery_date: z.string().datetime().optional(),
   shipping_address: z.string().max(500).optional(),
   billing_address: z.string().max(500).optional(),
@@ -46,7 +46,7 @@ const UpdatePOItemSchema = z.object({
 
 const UpdatePOSchema = z.object({
   vendor_id: z.string().uuid('Invalid vendor ID').optional(),
-  order_type: z.enum(['standard', 'urgent', 'drop_ship']).optional(),
+  order_type: z.enum(['purchase', 'donation', 'consignment', 'transfer']).optional(),
   expected_delivery_date: z.string().datetime().optional(),
   shipping_address: z.string().max(500).optional(),
   billing_address: z.string().max(500).optional(),

@@ -194,7 +194,7 @@ export const fetchVendors = createAsyncThunk(
  */
 function calculateDraftTotals(draft: DraftPO): void {
   // Calculate subtotal and tax from items
-  draft.subtotal_amount = draft.items.reduce(
+  draft.subtotal = draft.items.reduce(
     (sum, item) => sum + item.unit_cost * item.quantity_ordered,
     0
   );
@@ -202,7 +202,7 @@ function calculateDraftTotals(draft: DraftPO): void {
 
   // Calculate total
   draft.total_amount =
-    draft.subtotal_amount +
+    draft.subtotal +
     draft.tax_amount +
     draft.shipping_cost +
     draft.other_charges -
@@ -271,7 +271,7 @@ const purchaseOrdersSlice = createSlice({
         payment_terms: action.payload.payment_terms || '',
         notes: action.payload.notes || '',
         items: action.payload.items || [],
-        subtotal_amount: 0,
+        subtotal: 0,
         tax_amount: 0,
         shipping_cost: action.payload.shipping_cost || 0,
         other_charges: action.payload.other_charges || 0,
