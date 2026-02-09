@@ -200,16 +200,18 @@ const PurchaseOrderFormPage: React.FC = () => {
       <button
         onClick={() => navigate('/purchase-orders')}
         style={{
-          background: 'none',
+          padding: '8px 16px',
+          backgroundColor: '#6c757d',
+          color: 'white',
           border: 'none',
-          color: '#007bff',
+          borderRadius: '4px',
           cursor: 'pointer',
-          fontSize: '16px',
-          marginBottom: '20px',
+          fontSize: '14px',
           fontWeight: 600,
+          marginBottom: '20px',
         }}
-        onMouseOver={(e) => (e.currentTarget.style.color = '#0056b3')}
-        onMouseOut={(e) => (e.currentTarget.style.color = '#007bff')}
+        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#5a6268')}
+        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#6c757d')}
       >
         ← Back to Purchase Orders
       </button>
