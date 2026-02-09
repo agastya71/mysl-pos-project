@@ -27,6 +27,9 @@ describe('PurchaseOrderService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset mock implementations to ensure clean state
+    mockClient.query.mockReset();
+    mockClient.release.mockReset();
     (pool.connect as jest.Mock).mockResolvedValue(mockClient);
     (pool.query as jest.Mock).mockClear();
   });
@@ -136,9 +139,15 @@ describe('PurchaseOrderService', () => {
         items: [],
       };
 
+      const mockVendor = {
+        id: vendorId,
+        business_name: 'Test Vendor',
+        contact_person: 'John Doe',
+      };
+
       mockClient.query
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
-        .mockResolvedValueOnce({ rows: [{ id: vendorId }], rowCount: 1 }) // Vendor check
+        .mockResolvedValueOnce({ rows: [mockVendor], rowCount: 1 }) // Vendor check passes
         .mockResolvedValueOnce({ rowCount: 0 }); // ROLLBACK
 
       await expect(POService.createPO(userId, invalidData)).rejects.toThrow(
