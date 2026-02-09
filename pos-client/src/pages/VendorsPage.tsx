@@ -129,7 +129,7 @@ const VendorsPage: React.FC = () => {
     <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header */}
       <button
-        onClick={() => navigate('/pos')}
+        onClick={() => navigate('/purchase-orders')}
         style={{
           padding: '8px 16px',
           backgroundColor: '#6c757d',
@@ -143,7 +143,7 @@ const VendorsPage: React.FC = () => {
         onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#5a6268')}
         onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#6c757d')}
       >
-        ← Back to POS
+        ← Back to Purchase Orders
       </button>
 
       <div
