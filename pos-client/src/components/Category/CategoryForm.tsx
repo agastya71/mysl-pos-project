@@ -109,10 +109,16 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
     setSubmitting(true);
 
     try {
+      // Convert empty string to undefined for parent_category_id
+      const dataToSubmit = {
+        ...formData,
+        parent_category_id: formData.parent_category_id || undefined,
+      };
+
       if (category) {
-        await dispatch(updateCategory({ id: category.id, data: formData })).unwrap();
+        await dispatch(updateCategory({ id: category.id, data: dataToSubmit })).unwrap();
       } else {
-        await dispatch(createCategory(formData)).unwrap();
+        await dispatch(createCategory(dataToSubmit)).unwrap();
       }
       onSuccess();
       onClose();
