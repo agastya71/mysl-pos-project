@@ -4,7 +4,7 @@
  * Pattern: Similar to TransactionHistoryPage
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
@@ -28,8 +28,14 @@ import {
   approvePOThunk,
   cancelPOThunk,
   closePOThunk,
+  fetchPOById,
+  selectSelectedPO,
+  fetchReorderSuggestions,
+  selectReorderSuggestions,
 } from '../store/slices/purchaseOrders.slice';
 import { POStatus, POOrderType } from '../types/purchaseOrder.types';
+import PurchaseOrderDetailsModal from '../components/PurchaseOrder/PurchaseOrderDetailsModal';
+import ReorderSuggestionsModal from '../components/PurchaseOrder/ReorderSuggestionsModal';
 
 const PurchaseOrdersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -41,6 +47,12 @@ const PurchaseOrdersPage: React.FC = () => {
   const vendors = useAppSelector(selectVendors);
   const isLoading = useAppSelector(selectPOLoading);
   const error = useAppSelector(selectPOError);
+  const selectedPO = useAppSelector(selectSelectedPO);
+  const reorderSuggestions = useAppSelector(selectReorderSuggestions);
+
+  // Modal state
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   // Load data on mount
   useEffect(() => {
@@ -66,12 +78,14 @@ const PurchaseOrdersPage: React.FC = () => {
     navigate('/purchase-orders/new');
   };
 
-  const handleReorderSuggestions = () => {
-    navigate('/purchase-orders/reorder-suggestions');
+  const handleReorderSuggestions = async () => {
+    await dispatch(fetchReorderSuggestions());
+    setIsReorderModalOpen(true);
   };
 
-  const handleViewDetails = (id: string) => {
-    navigate(`/purchase-orders/${id}`);
+  const handleViewDetails = async (id: string) => {
+    await dispatch(fetchPOById(id));
+    setIsDetailsModalOpen(true);
   };
 
   const handleEdit = (id: string) => {
@@ -699,6 +713,23 @@ const PurchaseOrdersPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Modals */}
+      {isDetailsModalOpen && selectedPO && (
+        <PurchaseOrderDetailsModal
+          isOpen={isDetailsModalOpen}
+          onClose={() => setIsDetailsModalOpen(false)}
+          po={selectedPO}
+          onRefresh={() => dispatch(fetchPOs())}
+        />
+      )}
+
+      <ReorderSuggestionsModal
+        isOpen={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        suggestions={reorderSuggestions}
+        isLoading={isLoading}
+      />
     </div>
   );
 };
