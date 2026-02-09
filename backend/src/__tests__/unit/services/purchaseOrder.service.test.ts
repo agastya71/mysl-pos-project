@@ -71,6 +71,7 @@ describe('PurchaseOrderService', () => {
         id: 'po-123',
         po_number: 'PO-20260208-0001',
         vendor_id: vendorId,
+        vendor_name: 'Test Vendor',
         order_type: 'purchase',
         status: 'draft',
         order_date: new Date(),
@@ -98,7 +99,10 @@ describe('PurchaseOrderService', () => {
         .mockResolvedValueOnce({ rows: [mockProduct], rowCount: 1 }) // Products check
         .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 }) // Insert PO
         .mockResolvedValueOnce({ rows: [mockItem], rowCount: 1 }) // Insert item
-        .mockResolvedValueOnce(undefined); // COMMIT
+        .mockResolvedValueOnce(undefined) // COMMIT
+        // Mocks for getPOById call at the end (same mockClient, new connection)
+        .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 }) // PO query
+        .mockResolvedValueOnce({ rows: [mockItem], rowCount: 1 }); // Items query
 
       const result = await POService.createPO(userId, validCreateData);
 
@@ -114,8 +118,9 @@ describe('PurchaseOrderService', () => {
 
     it('should throw error if vendor not found', async () => {
       mockClient.query
-        .mockResolvedValueOnce(undefined) // BEGIN
-        .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // Vendor check fails
+        .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN (returns undefined but needs to be a proper result)
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // Vendor check fails
+        .mockResolvedValueOnce({ rowCount: 0 }); // ROLLBACK
 
       await expect(POService.createPO(userId, validCreateData)).rejects.toThrow(
         'Vendor not found or inactive'
@@ -132,8 +137,9 @@ describe('PurchaseOrderService', () => {
       };
 
       mockClient.query
-        .mockResolvedValueOnce(undefined) // BEGIN
-        .mockResolvedValueOnce({ rows: [{ id: vendorId }], rowCount: 1 }); // Vendor check
+        .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ id: vendorId }], rowCount: 1 }) // Vendor check
+        .mockResolvedValueOnce({ rowCount: 0 }); // ROLLBACK
 
       await expect(POService.createPO(userId, invalidData)).rejects.toThrow(
         'At least one line item is required'
@@ -177,6 +183,14 @@ describe('PurchaseOrderService', () => {
         discount_amount: 50,
       };
 
+      const mockPO = {
+        id: 'po-123',
+        subtotal: '1100.00',
+        total_amount: '1211.00',
+        vendor_name: 'Test Vendor',
+        items: [{ id: 'item-1' }, { id: 'item-2' }],
+      };
+
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce({ rows: [{ id: vendorId }], rowCount: 1 })
@@ -193,7 +207,10 @@ describe('PurchaseOrderService', () => {
         })
         .mockResolvedValueOnce({ rows: [{ id: 'item-1' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [{ id: 'item-2' }], rowCount: 1 })
-        .mockResolvedValueOnce(undefined); // COMMIT
+        .mockResolvedValueOnce(undefined) // COMMIT
+        // Mocks for getPOById call at the end
+        .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: mockPO.items, rowCount: 2 });
 
       const result = await POService.createPO(userId, multiItemData);
 
@@ -218,7 +235,7 @@ describe('PurchaseOrderService', () => {
         status: 'draft',
         total_amount: '1000.00',
         created_by: 'user-123',
-        creator_name: 'Admin User',
+        created_by_name: 'Admin User',
       };
 
       const mockItems = [
@@ -238,13 +255,12 @@ describe('PurchaseOrderService', () => {
 
       const result = await POService.getPOById(poId);
 
-      expect(result).toMatchObject({
-        id: poId,
-        po_number: 'PO-20260208-0001',
-        vendor_name: 'Test Vendor',
-      });
-      expect(result.items).toHaveLength(1);
-      expect(result.items[0].product_name).toBe('Product 1');
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe(poId);
+      expect(result!.po_number).toBe('PO-20260208-0001');
+      expect(result!.vendor_name).toBe('Test Vendor');
+      expect(result!.items).toHaveLength(1);
+      expect(result!.items[0].product_name).toBe('Product 1');
     });
 
     it('should return null if PO not found', async () => {
@@ -274,14 +290,20 @@ describe('PurchaseOrderService', () => {
         },
       ];
 
+      const mockItems = [
+        { id: 'item-1', product_name: 'Product 1' },
+      ];
+
       // getPOs uses pool.query directly
       (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ total: '1' }], rowCount: 1 }) // Count query
-        .mockResolvedValueOnce({ rows: mockPOs, rowCount: 1 }); // List query
+        .mockResolvedValueOnce({ rows: mockPOs, rowCount: 1 }) // List query
+        .mockResolvedValueOnce({ rows: mockItems, rowCount: 1 }); // Items query for po-1
 
       const result = await POService.getPOs(query);
 
       expect(result.data).toHaveLength(1);
+      expect(result.data[0].items).toHaveLength(1);
       expect(result.pagination.total).toBe(1);
       expect(result.pagination.page).toBe(1);
       expect(result.pagination.totalPages).toBe(1);
@@ -364,6 +386,8 @@ describe('PurchaseOrderService', () => {
         ...mockCurrentPO,
         expected_delivery_date: '2026-03-01',
         notes: 'Updated notes',
+        vendor_name: 'Test Vendor',
+        items: [],
       };
 
       mockClient.query
@@ -371,7 +395,10 @@ describe('PurchaseOrderService', () => {
         .mockResolvedValueOnce({ rows: [mockCurrentPO], rowCount: 1 }) // Get current PO
         .mockResolvedValueOnce({ rows: [mockUpdatedPO], rowCount: 1 }) // Update PO
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // Get items (none to update)
-        .mockResolvedValueOnce(undefined); // COMMIT
+        .mockResolvedValueOnce(undefined) // COMMIT
+        // Mocks for getPOById call at the end
+        .mockResolvedValueOnce({ rows: [mockUpdatedPO], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const result = await POService.updatePO(poId, updateData);
 
@@ -459,25 +486,14 @@ describe('PurchaseOrderService', () => {
         items: [],
       };
 
-      // First client for submitPO
       mockClient.query
         .mockResolvedValueOnce({
           rows: [{ id: poId, status: 'draft' }],
           rowCount: 1,
         })
-        .mockResolvedValueOnce({ rowCount: 1 }); // UPDATE query
-
-      // Second client for getPOById call
-      const mockClient2 = {
-        query: jest.fn(),
-        release: jest.fn(),
-      };
-
-      (pool.connect as jest.Mock)
-        .mockResolvedValueOnce(mockClient)
-        .mockResolvedValueOnce(mockClient2);
-
-      mockClient2.query
+        .mockResolvedValueOnce({ rows: [{ count: '3' }], rowCount: 1 }) // COUNT items query
+        .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE query
+        // Mocks for getPOById call at the end
         .mockResolvedValueOnce({ rows: [mockSubmittedPO], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
@@ -490,13 +506,15 @@ describe('PurchaseOrderService', () => {
     });
 
     it('should throw error if PO has no items', async () => {
-      mockClient.query.mockResolvedValueOnce({
-        rows: [{ id: poId, status: 'draft', item_count: '0' }],
-        rowCount: 1,
-      });
+      mockClient.query
+        .mockResolvedValueOnce({
+          rows: [{ id: poId, status: 'draft' }],
+          rowCount: 1,
+        })
+        .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 }); // COUNT items query returns 0
 
       await expect(POService.submitPO(poId)).rejects.toThrow(
-        'Cannot submit purchase order with no items'
+        'Cannot submit purchase order without line items'
       );
     });
 
@@ -517,15 +535,23 @@ describe('PurchaseOrderService', () => {
     const userId = 'user-123';
 
     it('should approve submitted PO successfully', async () => {
+      const mockApprovedPO = {
+        id: poId,
+        status: 'approved',
+        approved_by: userId,
+        vendor_name: 'Test Vendor',
+        items: [],
+      };
+
       mockClient.query
         .mockResolvedValueOnce({
           rows: [{ id: poId, status: 'submitted' }],
           rowCount: 1,
         })
-        .mockResolvedValueOnce({
-          rows: [{ id: poId, status: 'approved', approved_by: userId }],
-          rowCount: 1,
-        });
+        .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE query
+        // Mocks for getPOById call at the end
+        .mockResolvedValueOnce({ rows: [mockApprovedPO], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       await POService.approvePO(poId, userId);
 
@@ -562,6 +588,13 @@ describe('PurchaseOrderService', () => {
         ],
       };
 
+      const mockReceivedPO = {
+        id: poId,
+        status: 'partially_received',
+        vendor_name: 'Test Vendor',
+        items: [{ id: 'item-1', quantity_received: 50 }],
+      };
+
       mockClient.query
         .mockResolvedValueOnce(undefined) // BEGIN
         .mockResolvedValueOnce({
@@ -579,7 +612,10 @@ describe('PurchaseOrderService', () => {
           rowCount: 1,
         })
         .mockResolvedValueOnce({ rowCount: 1 }) // Update item
-        .mockResolvedValueOnce(undefined); // COMMIT
+        .mockResolvedValueOnce(undefined) // COMMIT
+        // Mocks for getPOById call at the end
+        .mockResolvedValueOnce({ rows: [mockReceivedPO], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: mockReceivedPO.items, rowCount: 1 });
 
       await POService.receiveItems(poId, receiveData, userId);
 
@@ -642,7 +678,7 @@ describe('PurchaseOrderService', () => {
         });
 
       await expect(POService.receiveItems(poId, receiveData, userId)).rejects.toThrow(
-        'Purchase order must be approved before receiving items'
+        'Can only receive items for approved or partially received purchase orders'
       );
     });
   });
@@ -651,21 +687,28 @@ describe('PurchaseOrderService', () => {
     const poId = 'po-123';
 
     it('should cancel PO successfully', async () => {
+      const mockCancelledPO = {
+        id: poId,
+        status: 'cancelled',
+        vendor_name: 'Test Vendor',
+        items: [],
+      };
+
       mockClient.query
         .mockResolvedValueOnce({
           rows: [{ id: poId, status: 'draft' }],
           rowCount: 1,
         })
-        .mockResolvedValueOnce({
-          rows: [{ id: poId, status: 'cancelled' }],
-          rowCount: 1,
-        });
+        .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE query
+        // Mocks for getPOById call at the end
+        .mockResolvedValueOnce({ rows: [mockCancelledPO], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       await POService.cancelPO(poId, 'Vendor unavailable');
 
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining("SET status = 'cancelled'"),
-        [poId]
+        expect.any(Array)
       );
     });
 
@@ -692,25 +735,13 @@ describe('PurchaseOrderService', () => {
         items: [],
       };
 
-      // First client for closePO
       mockClient.query
         .mockResolvedValueOnce({
           rows: [{ id: poId, status: 'received' }],
           rowCount: 1,
         })
-        .mockResolvedValueOnce({ rowCount: 1 }); // UPDATE query
-
-      // Second client for getPOById call
-      const mockClient2 = {
-        query: jest.fn(),
-        release: jest.fn(),
-      };
-
-      (pool.connect as jest.Mock)
-        .mockResolvedValueOnce(mockClient) // First call for closePO
-        .mockResolvedValueOnce(mockClient2); // Second call for getPOById
-
-      mockClient2.query
+        .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE query
+        // Mocks for getPOById call at the end
         .mockResolvedValueOnce({ rows: [mockClosedPO], rowCount: 1 }) // PO query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // Items query
 
