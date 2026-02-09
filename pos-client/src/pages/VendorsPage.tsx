@@ -14,7 +14,7 @@ import {
   setActiveOnlyFilter,
   clearError,
 } from '../store/slices/vendors.slice';
-import type { CreateVendorRequest, UpdateVendorRequest, Vendor } from '../services/api/vendor.api';
+import type { CreateVendorRequest, Vendor } from '../services/api/vendor.api';
 
 const VendorsPage: React.FC = () => {
   const navigate = useNavigate();
