@@ -63,11 +63,12 @@ const InventoryReportsPage: React.FC = () => {
     backgroundColor: '#6c757d',
     color: '#fff',
     border: 'none',
-    padding: '10px 20px',
+    padding: '8px 16px',
     borderRadius: '4px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: 600,
+    marginBottom: '20px',
   };
 
   const titleStyle: React.CSSProperties = {
@@ -148,17 +149,19 @@ const InventoryReportsPage: React.FC = () => {
 
   return (
     <div style={containerStyle}>
+      {/* Back Button */}
+      <button
+        onClick={handleBackToInventory}
+        style={backButtonStyle}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#5a6268')}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#6c757d')}
+      >
+        ← Back to Inventory
+      </button>
+
       {/* Header */}
       <div style={headerStyle}>
         <h1 style={titleStyle}>Inventory Reports</h1>
-        <button
-          onClick={handleBackToInventory}
-          style={backButtonStyle}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#5a6268')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#6c757d')}
-        >
-          ← Back to Inventory
-        </button>
       </div>
 
       {/* Overview Tab - Summary Cards */}
