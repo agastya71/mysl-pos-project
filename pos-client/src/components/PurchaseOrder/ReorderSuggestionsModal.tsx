@@ -8,12 +8,12 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../store/hooks';
 import { initializeDraft } from '../../store/slices/purchaseOrders.slice';
-import type { ReorderSuggestion } from '../../types/purchaseOrder.types';
+import type { ReorderSuggestionsByVendor } from '../../types/purchaseOrder.types';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  suggestions: ReorderSuggestion[];
+  suggestions: ReorderSuggestionsByVendor[];
   isLoading: boolean;
 }
 
