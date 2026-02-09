@@ -1,6 +1,47 @@
 /**
- * Vendors Management Page
- * CRUD operations for vendor management
+ * @fileoverview Vendors Management Page - Admin interface for vendor CRUD operations
+ *
+ * This page provides complete vendor management functionality:
+ * - View vendor list in table format with sortable columns
+ * - Create new vendors with comprehensive form (modal)
+ * - Edit existing vendor information
+ * - Delete vendors (soft delete with validation)
+ * - Filter vendors by active/inactive status
+ *
+ * Vendor Features:
+ * - Vendor types: supplier, distributor, manufacturer (color-coded badges)
+ * - Auto-generated vendor numbers (VEND-XXXXXX)
+ * - Contact information: business name, contact person, email, phone
+ * - Address: full address fields (line1, line2, city, state, postal, country)
+ * - Payment: payment terms (e.g., "Net 30"), tax ID
+ * - Status: active/inactive with visual badges
+ *
+ * State Management:
+ * - Uses Redux vendors slice for state
+ * - Async operations with loading and error states
+ * - Automatic refresh after create/update/delete
+ *
+ * Navigation:
+ * - Back button navigates to Purchase Orders page
+ * - Integrated with purchase order workflow
+ *
+ * @component
+ * @module pages/VendorsPage
+ * @requires react - React hooks (useEffect, useState)
+ * @requires react-router-dom - Navigation (useNavigate)
+ * @requires ../store/hooks - Redux hooks (useAppDispatch, useAppSelector)
+ * @requires ../store/slices/vendors.slice - Vendor actions and thunks
+ * @author Claude Sonnet 4.5 <noreply@anthropic.com>
+ * @created 2026-02-08 (Phase 3D - Vendor Management)
+ * @updated 2026-02-08
+ *
+ * @example
+ * // Route configuration in App.tsx
+ * <Route path="/vendors" element={<VendorsPage />} />
+ *
+ * @example
+ * // Navigate to vendors page
+ * navigate('/vendors');
  */
 
 import React, { useEffect, useState } from 'react';
@@ -16,14 +57,51 @@ import {
 } from '../store/slices/vendors.slice';
 import type { CreateVendorRequest, Vendor } from '../services/api/vendor.api';
 
+/**
+ * VendorsPage component
+ *
+ * Admin page for managing vendors (suppliers, distributors, manufacturers).
+ * Provides full CRUD operations with modal form and data table.
+ *
+ * Component State:
+ * - isFormOpen: Controls modal visibility
+ * - editingVendor: Current vendor being edited (null for create)
+ * - formData: Form input values
+ *
+ * Redux State:
+ * - vendors: Vendor list (from Redux)
+ * - loading: Loading state (from Redux)
+ * - error: Error message (from Redux)
+ * - activeOnly: Active status filter (from Redux)
+ *
+ * User Actions:
+ * - Click "+ Add Vendor": Open create form
+ * - Click "Edit": Open edit form with pre-filled data
+ * - Click "Delete": Soft delete vendor (with confirmation)
+ * - Toggle "Show active vendors only": Filter list
+ * - Submit form: Create/update vendor
+ * - Click "← Back to Purchase Orders": Return to PO page
+ *
+ * @returns {JSX.Element} Vendor management page with table and modal form
+ */
 const VendorsPage: React.FC = () => {
+  // Navigation and Redux hooks
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
+  // Redux state selectors
   const { vendors, loading, error, activeOnly } = useAppSelector((state) => state.vendors);
 
+  // Local component state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+
+  /**
+   * Form data state
+   *
+   * Holds all vendor form input values. Reset on modal close.
+   * Pre-populated when editing existing vendor.
+   */
   const [formData, setFormData] = useState<CreateVendorRequest>({
     vendor_type: 'supplier',
     business_name: '',
@@ -41,10 +119,32 @@ const VendorsPage: React.FC = () => {
     notes: '',
   });
 
+  /**
+   * Fetch vendors on mount and when activeOnly filter changes
+   *
+   * Triggers Redux thunk to load vendor list from backend.
+   */
   useEffect(() => {
     dispatch(fetchVendors(activeOnly));
   }, [dispatch, activeOnly]);
 
+  /**
+   * Open vendor form modal
+   *
+   * Opens modal for creating new vendor or editing existing vendor.
+   * If vendor parameter provided, pre-fills form with vendor data.
+   * If no vendor, resets form to default values.
+   *
+   * @param {Vendor} [vendor] - Vendor to edit (optional, omit for create)
+   *
+   * @example
+   * // Create new vendor
+   * handleOpenForm();
+   *
+   * @example
+   * // Edit existing vendor
+   * handleOpenForm(selectedVendor);
+   */
   const handleOpenForm = (vendor?: Vendor) => {
     if (vendor) {
       setEditingVendor(vendor);
@@ -86,12 +186,40 @@ const VendorsPage: React.FC = () => {
     setIsFormOpen(true);
   };
 
+  /**
+   * Close vendor form modal
+   *
+   * Closes modal and resets form state.
+   * Clears any error messages from Redux.
+   *
+   * @example
+   * // Cancel button or modal backdrop click
+   * handleCloseForm();
+   */
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setEditingVendor(null);
     dispatch(clearError());
   };
 
+  /**
+   * Submit vendor form
+   *
+   * Handles form submission for both create and update operations.
+   * Dispatches createVendor or updateVendor thunk based on editingVendor state.
+   * On success, closes modal and refreshes vendor list.
+   * On error, displays error message from Redux state.
+   *
+   * @async
+   * @param {React.FormEvent} e - Form submit event
+   * @returns {Promise<void>}
+   *
+   * @example
+   * // Form submission
+   * <form onSubmit={handleSubmit}>
+   *   ...
+   * </form>
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -107,6 +235,25 @@ const VendorsPage: React.FC = () => {
     }
   };
 
+  /**
+   * Delete vendor with confirmation
+   *
+   * Soft deletes vendor by setting is_active=false.
+   * Shows browser confirmation dialog before deletion.
+   * On success, refreshes vendor list.
+   *
+   * Validation:
+   * - Cannot delete vendor with active purchase orders (backend enforces)
+   * - Shows error message if deletion fails
+   *
+   * @async
+   * @param {string} id - Vendor UUID
+   * @returns {Promise<void>}
+   *
+   * @example
+   * // Delete button click
+   * <button onClick={() => handleDelete(vendor.id)}>Delete</button>
+   */
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this vendor?')) {
       try {
@@ -118,6 +265,22 @@ const VendorsPage: React.FC = () => {
     }
   };
 
+  /**
+   * Handle form input changes
+   *
+   * Updates formData state when user types in any form field.
+   * Used for all text inputs, selects, and textareas in vendor form.
+   *
+   * @param {React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>} e - Input change event
+   *
+   * @example
+   * // Text input
+   * <input name="business_name" value={formData.business_name} onChange={handleInputChange} />
+   *
+   * @example
+   * // Select dropdown
+   * <select name="vendor_type" value={formData.vendor_type} onChange={handleInputChange}>
+   */
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -125,9 +288,42 @@ const VendorsPage: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  /**
+   * Render vendor management page
+   *
+   * Layout structure:
+   * 1. Back button (navigate to Purchase Orders)
+   * 2. White card container with:
+   *    - Title and "+ Add Vendor" button
+   *    - Active vendors filter checkbox
+   *    - Error message (if present)
+   *    - Loading spinner OR empty state OR vendor table
+   * 3. Modal form (when isFormOpen=true)
+   *
+   * Vendor table columns:
+   * - Vendor #: Auto-generated vendor number
+   * - Business Name: Primary vendor name
+   * - Type: Supplier/Distributor/Manufacturer (color-coded badge)
+   * - Contact: Contact person name
+   * - Email: Contact email
+   * - Phone: Contact phone
+   * - Payment Terms: Payment terms (e.g., "Net 30")
+   * - Status: Active/Inactive badge
+   * - Actions: Edit and Delete buttons
+   *
+   * Modal form fields:
+   * - Vendor Type: Select dropdown (supplier/distributor/manufacturer)
+   * - Business Name: Required text input
+   * - Contact Person: Optional text input
+   * - Email, Phone: Optional contact fields
+   * - Address: Line 1, Line 2, City, State, Postal Code, Country
+   * - Payment Terms: Optional text (e.g., "Net 30")
+   * - Tax ID: Optional text
+   * - Notes: Optional textarea
+   */
   return (
     <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Header */}
+      {/* Back button - Navigate to Purchase Orders page */}
       <button
         onClick={() => navigate('/purchase-orders')}
         style={{
@@ -146,6 +342,7 @@ const VendorsPage: React.FC = () => {
         ← Back to Purchase Orders
       </button>
 
+      {/* Main content card */}
       <div
         style={{
           backgroundColor: 'white',
@@ -154,7 +351,7 @@ const VendorsPage: React.FC = () => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         }}
       >
-        {/* Title and Actions */}
+        {/* Header section - Title and Add Vendor button */}
         <div
           style={{
             display: 'flex',
@@ -188,7 +385,7 @@ const VendorsPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Filter */}
+        {/* Active status filter checkbox */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
             <input
@@ -201,7 +398,7 @@ const VendorsPage: React.FC = () => {
           </label>
         </div>
 
-        {/* Error Message */}
+        {/* Error message banner (if error exists) */}
         {error && (
           <div
             style={{
@@ -217,7 +414,7 @@ const VendorsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Loading State */}
+        {/* Loading spinner - shown during async operations */}
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center' }}>
             <div
@@ -234,6 +431,7 @@ const VendorsPage: React.FC = () => {
             <p>Loading vendors...</p>
           </div>
         ) : vendors.length === 0 ? (
+          /* Empty state - shown when no vendors match filter */
           <div
             style={{
               padding: '60px',
@@ -267,6 +465,7 @@ const VendorsPage: React.FC = () => {
             </button>
           </div>
         ) : (
+          /* Vendor table - displays vendor list with all columns */
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8f9fa' }}>
@@ -370,7 +569,8 @@ const VendorsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Vendor Form Modal */}
+      {/* Vendor form modal - shown when isFormOpen=true */}
+      {/* Modal overlay with click-outside-to-close functionality */}
       {isFormOpen && (
         <div
           style={{
@@ -387,6 +587,7 @@ const VendorsPage: React.FC = () => {
           }}
           onClick={handleCloseForm}
         >
+          {/* Modal content container - stops propagation to prevent close on inner click */}
           <div
             style={{
               backgroundColor: 'white',
@@ -401,8 +602,9 @@ const VendorsPage: React.FC = () => {
           >
             <h2 style={{ marginTop: 0 }}>{editingVendor ? 'Edit Vendor' : 'Add New Vendor'}</h2>
 
+            {/* Vendor form - all fields with validation */}
             <form onSubmit={handleSubmit}>
-              {/* Vendor Type */}
+              {/* Vendor Type dropdown - Required field */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
                   Vendor Type *
@@ -426,7 +628,7 @@ const VendorsPage: React.FC = () => {
                 </select>
               </div>
 
-              {/* Business Name */}
+              {/* Business Name input - Required field, max 200 chars */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
                   Business Name *
@@ -448,7 +650,7 @@ const VendorsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Contact Person */}
+              {/* Contact Person input - Optional, max 100 chars */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
                   Contact Person
@@ -469,7 +671,7 @@ const VendorsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Email and Phone */}
+              {/* Email and Phone inputs - Optional, two-column layout */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
@@ -511,7 +713,7 @@ const VendorsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Address Line 1 */}
+              {/* Address Line 1 input - Optional, max 200 chars */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
                   Address Line 1
@@ -532,7 +734,7 @@ const VendorsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Address Line 2 */}
+              {/* Address Line 2 input - Optional, max 200 chars */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
                   Address Line 2
@@ -553,7 +755,7 @@ const VendorsPage: React.FC = () => {
                 />
               </div>
 
-              {/* City, State, Postal Code */}
+              {/* City, State, Postal Code inputs - Optional, three-column layout */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
@@ -614,7 +816,7 @@ const VendorsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Country */}
+              {/* Country input - Optional, max 100 chars */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
                   Country
@@ -635,7 +837,7 @@ const VendorsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Payment Terms and Tax ID */}
+              {/* Payment Terms and Tax ID inputs - Optional, two-column layout */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
@@ -678,7 +880,7 @@ const VendorsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Notes */}
+              {/* Notes textarea - Optional, resizable */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
                   Notes
@@ -699,7 +901,7 @@ const VendorsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Form Actions */}
+              {/* Form action buttons - Cancel and Submit */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '30px' }}>
                 <button
                   type="button"
@@ -744,6 +946,12 @@ const VendorsPage: React.FC = () => {
   );
 };
 
+/**
+ * Table header style
+ *
+ * Consistent styling for all table header cells.
+ * Used in vendor table column headers.
+ */
 const tableHeaderStyle: React.CSSProperties = {
   padding: '12px',
   textAlign: 'left',
@@ -752,9 +960,20 @@ const tableHeaderStyle: React.CSSProperties = {
   borderBottom: '2px solid #dee2e6',
 };
 
+/**
+ * Table cell style
+ *
+ * Consistent styling for all table body cells.
+ * Used in vendor table data rows.
+ */
 const tableCellStyle: React.CSSProperties = {
   padding: '12px',
   fontSize: '14px',
 };
 
+/**
+ * Export VendorsPage component as default
+ *
+ * @exports VendorsPage
+ */
 export default VendorsPage;

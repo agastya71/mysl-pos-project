@@ -1,7 +1,14 @@
 /**
- * Reorder Suggestions Modal
- * Shows products with low stock grouped by vendor in a modal
- * Allows quick PO creation from selected products
+ * @fileoverview ReorderSuggestionsModal Component - Intelligent reorder suggestions modal
+ *
+ * Smart modal displaying low-stock products grouped by vendor with automatic reorder
+ * quantity calculations. Enables one-click purchase order creation for vendor-specific
+ * reorder suggestions based on current inventory levels and reorder points.
+ *
+ * @module components/PurchaseOrder/ReorderSuggestionsModal
+ * @author Claude Sonnet 4.5 <noreply@anthropic.com>
+ * @created 2026-02-08 (Phase 3D - PO Modals)
+ * @updated 2026-02-08
  */
 
 import React from 'react';
@@ -10,6 +17,15 @@ import { useAppDispatch } from '../../store/hooks';
 import { initializeDraft } from '../../store/slices/purchaseOrders.slice';
 import type { ReorderSuggestionsByVendor } from '../../types/purchaseOrder.types';
 
+/**
+ * ReorderSuggestionsModal component props
+ *
+ * @interface Props
+ * @property {boolean} isOpen - Whether modal is visible
+ * @property {function} onClose - Callback when modal closes
+ * @property {ReorderSuggestionsByVendor[]} suggestions - Vendor-grouped reorder suggestions
+ * @property {boolean} isLoading - Loading state while fetching suggestions
+ */
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -17,6 +33,57 @@ interface Props {
   isLoading: boolean;
 }
 
+/**
+ * ReorderSuggestionsModal Component
+ *
+ * Intelligent modal displaying vendor-grouped reorder suggestions for products
+ * at or below reorder levels. Enables rapid purchase order creation with
+ * pre-filled quantities and costs.
+ *
+ * Features:
+ * - Vendor grouping with product counts and estimated totals
+ * - Stock level color coding (critical/warning/low)
+ * - "OUT OF STOCK" badges for zero-quantity products
+ * - One-click PO creation per vendor
+ * - Automatic reorder quantity calculation
+ * - Grand total across all vendors
+ * - Loading state with spinner
+ * - Empty state when all products adequately stocked
+ * - Product details table with current stock, reorder levels, costs
+ * - Vendor contact information display
+ *
+ * Stock Level Colors:
+ * - Critical: Red (#dc3545) - Out of stock (0 qty)
+ * - Warning: Light Red (#ff6b6b) - Very low (≤ 50% of reorder level)
+ * - Low: Yellow (#ffc107) - Below reorder level
+ *
+ * @component
+ * @param {Props} props - Component props
+ * @returns {JSX.Element | null} Reorder suggestions modal or null when closed
+ *
+ * @example
+ * // Basic usage in PurchaseOrdersPage
+ * const [showSuggestions, setShowSuggestions] = useState(false);
+ * const suggestions = useAppSelector(selectReorderSuggestions);
+ * const isLoading = useAppSelector(selectPOLoading);
+ *
+ * <ReorderSuggestionsModal
+ *   isOpen={showSuggestions}
+ *   onClose={() => setShowSuggestions(false)}
+ *   suggestions={suggestions}
+ *   isLoading={isLoading}
+ * />
+ *
+ * @example
+ * // Quick reorder flow
+ * // 1. Click "Reorder Suggestions" button
+ * // 2. Modal shows vendors with low-stock products
+ * // 3. Click "Create PO" for specific vendor
+ * // 4. Redirects to PO form with pre-filled items
+ * // 5. Adjust quantities if needed, submit
+ *
+ * @see {@link PurchaseOrderFormPage} - Target page for PO creation
+ */
 const ReorderSuggestionsModal: React.FC<Props> = ({
   isOpen,
   onClose,
@@ -26,8 +93,27 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
+  // Don't render anything when closed
   if (!isOpen) return null;
 
+  /**
+   * Handle Create PO button click for specific vendor
+   *
+   * Initializes draft purchase order with all suggested products for the vendor,
+   * pre-filling quantities and costs, then navigates to PO creation form.
+   *
+   * @param {string} vendorId - Vendor ID to create PO for
+   * @returns {void}
+   *
+   * @example
+   * handleCreatePOForVendor('vendor-123')
+   * // Initializes draft with:
+   * // - Vendor ID
+   * // - All low-stock products for that vendor
+   * // - Reorder quantities
+   * // - Unit costs
+   * // - Notes with current stock levels
+   */
   const handleCreatePOForVendor = (vendorId: string) => {
     const vendorSuggestions = suggestions.find((s) => s.vendor_id === vendorId);
     if (!vendorSuggestions) return;
@@ -65,6 +151,7 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
   };
 
   return (
+    /* Modal overlay - click to close */
     <div
       style={{
         position: 'fixed',
@@ -82,6 +169,7 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
       }}
       onClick={onClose}
     >
+      {/* Modal content - prevent click propagation */}
       <div
         style={{
           backgroundColor: 'white',
@@ -146,6 +234,7 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
             </div>
           </div>
 
+          {/* Loading State */}
           {isLoading ? (
             <div style={{ padding: '40px', textAlign: 'center' }}>
               <div
@@ -161,7 +250,8 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
               />
               <p>Loading reorder suggestions...</p>
             </div>
-          ) : suggestions.length === 0 ? (
+          ) : /* Empty State - All products adequately stocked */
+          suggestions.length === 0 ? (
             <div
               style={{
                 padding: '60px',
@@ -180,6 +270,7 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
               </p>
             </div>
           ) : (
+            /* Vendor-grouped suggestions with products */
             <div style={{ marginTop: '30px' }}>
               {suggestions.map((vendor, vendorIndex) => (
                 <div
@@ -277,6 +368,12 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
                     </thead>
                     <tbody>
                       {vendor.products.map((product, productIndex) => {
+                        /**
+                         * Determine stock level severity
+                         * - critical: Out of stock (0)
+                         * - warning: Very low (≤ 50% of reorder level)
+                         * - low: Below reorder level
+                         */
                         const stockLevel =
                           product.quantity_in_stock === 0
                             ? 'critical'
@@ -284,6 +381,12 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
                             ? 'warning'
                             : 'low';
 
+                        /**
+                         * Color code based on stock level
+                         * - Critical: Bright red (#dc3545)
+                         * - Warning: Light red (#ff6b6b)
+                         * - Low: Yellow (#ffc107)
+                         */
                         const stockColor =
                           stockLevel === 'critical'
                             ? '#dc3545'
@@ -305,6 +408,7 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
                           >
                             <td style={tableCellStyle}>{product.sku}</td>
                             <td style={tableCellStyle}>{product.product_name}</td>
+                            {/* Current stock - color coded by severity with OUT badge for zero stock */}
                             <td
                               style={{
                                 ...tableCellStyle,
@@ -364,6 +468,7 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
                         );
                       })}
                     </tbody>
+                    {/* Vendor Totals Footer */}
                     <tfoot>
                       <tr style={{ backgroundColor: '#f8f9fa', fontWeight: 'bold' }}>
                         <td
@@ -392,7 +497,8 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
                 </div>
               ))}
 
-              {/* Grand Total */}
+              {/* Grand Total - Only shown when multiple vendors */}
+              {/* Aggregates total items and costs across all vendors */}
               {suggestions.length > 1 && (
                 <div
                   style={{
@@ -436,6 +542,15 @@ const ReorderSuggestionsModal: React.FC<Props> = ({
   );
 };
 
+/**
+ * Table header cell style constant
+ *
+ * Consistent styling for all table header cells in vendor product tables.
+ * Left-aligned by default (override with textAlign for right-aligned columns).
+ * Uses heavier font weight for headers.
+ *
+ * @constant {React.CSSProperties}
+ */
 const tableHeaderStyle: React.CSSProperties = {
   padding: '12px',
   textAlign: 'left',
@@ -444,6 +559,14 @@ const tableHeaderStyle: React.CSSProperties = {
   borderBottom: '2px solid #dee2e6',
 };
 
+/**
+ * Table body cell style constant
+ *
+ * Consistent styling for all table body cells displaying product information.
+ * Used across all vendor product rows.
+ *
+ * @constant {React.CSSProperties}
+ */
 const tableCellStyle: React.CSSProperties = {
   padding: '12px',
   fontSize: '14px',
