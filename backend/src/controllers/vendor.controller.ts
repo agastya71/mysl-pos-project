@@ -303,13 +303,13 @@ export async function getVendors(req: Request, res: Response) {
 
     const result = await pool.query(query);
 
-    res.json({
+    return res.json({
       success: true,
       data: result.rows,
     });
   } catch (error: any) {
     console.error('Error fetching vendors:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         code: 'DATABASE_ERROR',
@@ -417,13 +417,13 @@ export async function getVendorById(req: Request, res: Response) {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: result.rows[0],
     });
   } catch (error: any) {
     console.error('Error fetching vendor:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         code: 'DATABASE_ERROR',
@@ -584,7 +584,7 @@ export async function createVendor(req: Request, res: Response) {
       ]
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Vendor created successfully',
       data: result.rows[0],
@@ -599,7 +599,7 @@ export async function createVendor(req: Request, res: Response) {
     }
 
     console.error('Error creating vendor:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         code: 'DATABASE_ERROR',
@@ -790,7 +790,7 @@ export async function updateVendor(req: Request, res: Response) {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Vendor updated successfully',
       data: result.rows[0],
@@ -805,7 +805,7 @@ export async function updateVendor(req: Request, res: Response) {
     }
 
     console.error('Error updating vendor:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         code: 'DATABASE_ERROR',
@@ -947,14 +947,14 @@ export async function deleteVendor(req: Request, res: Response) {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Vendor deleted successfully',
       data: result.rows[0],
     });
   } catch (error: any) {
     console.error('Error deleting vendor:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         code: 'DATABASE_ERROR',
