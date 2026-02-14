@@ -44,6 +44,9 @@ export const POSPage: React.FC = () => {
           <button onClick={() => navigate('/purchase-orders')} style={styles.historyButton}>
             🛒 Purchase Orders
           </button>
+          <button onClick={() => navigate('/employees')} style={styles.historyButton}>
+            👥 Employees
+          </button>
           <button onClick={() => navigate('/pos/history')} style={styles.historyButton}>
             📋 History
           </button>
