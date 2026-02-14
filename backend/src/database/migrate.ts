@@ -29,11 +29,11 @@ const createMigrationsTable = async (): Promise<void> => {
 const getMigrationOrder = (): Migration[] => {
   const migrations: Migration[] = [];
 
-  // Level 1: Independent tables
-  const level1 = ['categories', 'terminals'];
+  // Level 1: Independent tables (no foreign keys)
+  const level1 = ['categories', 'terminals', 'roles', 'permissions'];
 
-  // Level 2: First dependencies
-  const level2 = ['users', 'vendors', 'customers'];
+  // Level 2: First dependencies (depend on level 1)
+  const level2 = ['users', 'vendors', 'customers', 'role_permissions', 'employees'];
 
   // Level 3: Second level dependencies
   const level3 = ['products', 'sessions', 'system_settings'];
@@ -86,10 +86,12 @@ const getMigrationOrder = (): Migration[] => {
     }
   }
 
-  // Add functions
+  // Add functions (sorted alphabetically for consistency)
   const functionsPath = path.join(SCHEMA_BASE_PATH, 'functions');
   if (fs.existsSync(functionsPath)) {
-    const functionFiles = fs.readdirSync(functionsPath).filter((f) => f.endsWith('.sql'));
+    const functionFiles = fs.readdirSync(functionsPath)
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
     for (const file of functionFiles) {
       migrations.push({
         name: `function_${file.replace('.sql', '')}`,
@@ -98,10 +100,13 @@ const getMigrationOrder = (): Migration[] => {
     }
   }
 
-  // Add triggers
+  // Add triggers (sorted alphabetically for consistency)
+  // Note: Triggers depend on tables and functions being created first
   const triggersPath = path.join(SCHEMA_BASE_PATH, 'triggers');
   if (fs.existsSync(triggersPath)) {
-    const triggerFiles = fs.readdirSync(triggersPath).filter((f) => f.endsWith('.sql'));
+    const triggerFiles = fs.readdirSync(triggersPath)
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
     for (const file of triggerFiles) {
       migrations.push({
         name: `trigger_${file.replace('.sql', '')}`,
