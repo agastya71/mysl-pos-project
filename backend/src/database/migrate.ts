@@ -29,6 +29,21 @@ const createMigrationsTable = async (): Promise<void> => {
 const getMigrationOrder = (): Migration[] => {
   const migrations: Migration[] = [];
 
+  // Step 1: Add functions FIRST (tables may reference functions in their definitions)
+  const functionsPath = path.join(SCHEMA_BASE_PATH, 'functions');
+  if (fs.existsSync(functionsPath)) {
+    const functionFiles = fs.readdirSync(functionsPath)
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
+    for (const file of functionFiles) {
+      migrations.push({
+        name: `function_${file.replace('.sql', '')}`,
+        filePath: path.join(functionsPath, file),
+      });
+    }
+  }
+
+  // Step 2: Add tables in dependency order
   // Level 1: Independent tables (no foreign keys)
   const level1 = ['categories', 'terminals', 'roles', 'permissions'];
 
@@ -74,10 +89,12 @@ const getMigrationOrder = (): Migration[] => {
     }
   }
 
-  // Add views
+  // Step 3: Add views (depend on tables)
   const viewsPath = path.join(SCHEMA_BASE_PATH, 'views');
   if (fs.existsSync(viewsPath)) {
-    const viewFiles = fs.readdirSync(viewsPath).filter((f) => f.endsWith('.sql'));
+    const viewFiles = fs.readdirSync(viewsPath)
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
     for (const file of viewFiles) {
       migrations.push({
         name: `view_${file.replace('.sql', '')}`,
@@ -86,22 +103,7 @@ const getMigrationOrder = (): Migration[] => {
     }
   }
 
-  // Add functions (sorted alphabetically for consistency)
-  const functionsPath = path.join(SCHEMA_BASE_PATH, 'functions');
-  if (fs.existsSync(functionsPath)) {
-    const functionFiles = fs.readdirSync(functionsPath)
-      .filter((f) => f.endsWith('.sql'))
-      .sort();
-    for (const file of functionFiles) {
-      migrations.push({
-        name: `function_${file.replace('.sql', '')}`,
-        filePath: path.join(functionsPath, file),
-      });
-    }
-  }
-
-  // Add triggers (sorted alphabetically for consistency)
-  // Note: Triggers depend on tables and functions being created first
+  // Step 4: Add triggers LAST (depend on both tables and functions)
   const triggersPath = path.join(SCHEMA_BASE_PATH, 'triggers');
   if (fs.existsSync(triggersPath)) {
     const triggerFiles = fs.readdirSync(triggersPath)
