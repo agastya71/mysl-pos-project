@@ -8,6 +8,8 @@ import customerRoutes from './customer.routes';
 import inventoryRoutes from './inventory.routes';
 import vendorRoutes from './vendor.routes';
 import purchaseOrderRoutes from './purchaseOrder.routes';
+import employeeRoutes from './employee.routes';
+import roleRoutes from './role.routes';
 
 const router = Router();
 
@@ -20,5 +22,7 @@ router.use('/customers', customerRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/vendors', vendorRoutes);
 router.use('/purchase-orders', purchaseOrderRoutes);
+router.use('/employees', employeeRoutes);
+router.use('/roles', roleRoutes);
 
 export default router;
