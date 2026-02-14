@@ -48,12 +48,12 @@ fi
 echo -e "${YELLOW}Building Docker image...${NC}"
 echo ""
 
-# Build the Docker image
+# Build the Docker image (context is project root for tsconfig.base.json access)
 docker build \
     -f backend/Dockerfile.production \
     -t pos-backend:${VERSION} \
     -t pos-backend:latest \
-    ./backend
+    .
 
 if [ $? -eq 0 ]; then
     echo ""

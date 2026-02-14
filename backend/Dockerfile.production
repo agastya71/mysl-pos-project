@@ -5,13 +5,19 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY backend/package*.json ./
+
+# Copy tsconfig files from project root (needed for build)
+COPY tsconfig.base.json /tsconfig.base.json
+COPY backend/tsconfig.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-RUN npm ci
+# Note: Using npm install instead of npm ci (lock file not in repo)
+RUN npm install --no-audit --no-fund
 
-# Copy source code
-COPY . .
+# Copy backend source code and schema
+COPY backend/src ./src
+COPY schema ../schema
 
 # Build TypeScript to JavaScript
 RUN npm run build
@@ -35,7 +41,7 @@ WORKDIR /app
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
-COPY --from=builder --chown=nodejs:nodejs /app/schema ./schema
+COPY --from=builder --chown=nodejs:nodejs /schema ./schema
 
 # Switch to non-root user
 USER nodejs
