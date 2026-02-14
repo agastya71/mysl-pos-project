@@ -1,3 +1,40 @@
+/**
+ * @fileoverview Role and Permission Management Page
+ *
+ * Main interface for managing roles and their permissions in the POS system.
+ * Displays roles as cards in a grid layout with permission management modals.
+ *
+ * Features:
+ * - Role Card Grid: displays all roles with name, description, and manage button
+ * - Create Role Modal: form for creating new roles with name and description
+ * - Permissions Modal: checklist interface for assigning/revoking permissions
+ * - Real-time permission toggle: checkbox-based permission assignment
+ * - Permission counter: shows assigned/total permissions for selected role
+ *
+ * Role Management:
+ * - View all roles in grid layout
+ * - Create new role with name and optional description
+ * - Manage permissions per role (assign/revoke)
+ * - Cannot delete roles (soft delete not implemented)
+ *
+ * Permission System:
+ * - Permissions are predefined in database (not created via UI)
+ * - Each permission has: id, permission_name, resource, action, description
+ * - Roles can have 0 to N permissions assigned
+ * - Permission assignment creates role_permissions record
+ *
+ * State Management:
+ * - Uses roles Redux slice for role list and selected role
+ * - Uses roles Redux slice for permissions list
+ * - Local state for modal visibility and form inputs
+ *
+ * Navigation:
+ * - Back button: returns to POS page (/pos)
+ * - Close modal buttons: dismiss modals without navigation
+ *
+ * @component
+ */
+
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -13,28 +50,66 @@ import {
 } from '../store/slices/roles.slice';
 import { CreateRoleInput } from '../types/employee.types';
 
+/**
+ * RolesPage Component
+ *
+ * Role and permission management interface with card grid and modal-based workflows.
+ * Uses Redux for state management and modal patterns for create/edit operations.
+ *
+ * Component Flow:
+ * 1. On mount: fetches roles and permissions from API
+ * 2. User clicks "Manage Permissions": opens permissions modal with role data
+ * 3. User toggles permission checkbox: immediately assigns or revokes permission
+ * 4. User clicks "New Role": opens create role modal
+ * 5. On role create: dispatches action, shows alert, closes modal
+ *
+ * @returns {JSX.Element} Rendered roles page with header, role cards, and modals
+ *
+ * @example
+ * // Route configuration in App.tsx
+ * <Route path="/roles" element={<RolesPage />} />
+ */
 const RolesPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+
+  // Redux state selectors
   const { roles, permissions, selectedRole, isLoading } = useSelector(
     (state: RootState) => state.roles
   );
 
+  // Local modal visibility state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+
+  // Local form state for create role modal
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDescription, setNewRoleDescription] = useState('');
 
+  /**
+   * Initial data fetch on component mount
+   * Fetches all roles and all permissions for display
+   */
   useEffect(() => {
     dispatch(fetchRoles());
     dispatch(fetchPermissions());
   }, [dispatch]);
 
+  /**
+   * Handle view permissions button click
+   * Fetches role details with permissions and opens permissions modal
+   * @param {number} roleId - Role ID to fetch and manage permissions for
+   */
   const handleViewPermissions = async (roleId: number) => {
     await dispatch(fetchRoleById(roleId));
     setShowPermissionsModal(true);
   };
 
+  /**
+   * Handle create role form submission
+   * Validates role name, dispatches create action, shows alert, closes modal
+   * @param {React.FormEvent} e - Form submit event
+   */
   const handleCreateRole = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -58,6 +133,13 @@ const RolesPage: React.FC = () => {
     }
   };
 
+  /**
+   * Handle permission checkbox toggle
+   * Assigns permission if unchecked, revokes if checked
+   * Immediately updates via API and refetches role data
+   * @param {number} permissionId - Permission ID to toggle
+   * @param {boolean} isAssigned - Current assignment state (true if already assigned)
+   */
   const handleTogglePermission = async (permissionId: number, isAssigned: boolean) => {
     if (!selectedRole) return;
 
@@ -76,6 +158,10 @@ const RolesPage: React.FC = () => {
     }
   };
 
+  /**
+   * Inline style objects for component styling
+   * Grid layout for role cards, modal overlays for create/edit workflows
+   */
   const styles = {
     page: {
       minHeight: '100vh',
