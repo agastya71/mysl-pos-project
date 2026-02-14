@@ -15,6 +15,9 @@ import PurchaseOrderDetailsPage from './pages/PurchaseOrderDetailsPage';
 import PurchaseOrderFormPage from './pages/PurchaseOrderFormPage';
 import ReorderSuggestionsPage from './pages/ReorderSuggestionsPage';
 import VendorsPage from './pages/VendorsPage';
+import EmployeesPage from './pages/EmployeesPage';
+import EmployeeFormPage from './pages/EmployeeFormPage';
+import RolesPage from './pages/RolesPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -127,6 +130,38 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <PurchaseOrderFormPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/employees"
+          element={
+            <PrivateRoute>
+              <EmployeesPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/employees/new"
+          element={
+            <PrivateRoute>
+              <EmployeeFormPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/employees/:id/edit"
+          element={
+            <PrivateRoute>
+              <EmployeeFormPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/roles"
+          element={
+            <PrivateRoute>
+              <RolesPage />
             </PrivateRoute>
           }
         />

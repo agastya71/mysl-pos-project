@@ -1,0 +1,14 @@
+-- Role-Permission junction table (many-to-many)
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+  granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (role_id, permission_id)
+);
+
+-- Add indexes
+CREATE INDEX idx_role_permissions_role ON role_permissions(role_id);
+CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id);
+
+-- Add comment
+COMMENT ON TABLE role_permissions IS 'Maps roles to their assigned permissions';
