@@ -1,8 +1,8 @@
 # POS System - Technical Documentation
 
-**Version**: 1.1
-**Last Updated**: February 8, 2026
-**Phases Documented**: 1B, 1D, 2, 3A, 3B, 3C, 3D
+**Version**: 1.4
+**Last Updated**: February 14, 2026
+**Phases Documented**: 1B, 1D, 2, 3A, 3B, 3C, 3D, 4A
 **Next Phase**: TBD
 
 ---
@@ -552,6 +552,75 @@ CREATE INDEX idx_po_items_po ON purchase_order_items(purchase_order_id);
 CREATE INDEX idx_po_items_product ON purchase_order_items(product_id);
 ```
 
+#### roles
+```sql
+CREATE TABLE roles (
+  id SERIAL PRIMARY KEY,
+  role_name VARCHAR(50) UNIQUE NOT NULL,
+  description TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Default roles: admin, manager, supervisor, cashier
+CREATE INDEX idx_roles_name ON roles(role_name);
+```
+
+#### permissions
+```sql
+CREATE TABLE permissions (
+  id SERIAL PRIMARY KEY,
+  permission_name VARCHAR(100) UNIQUE NOT NULL,
+  resource VARCHAR(50) NOT NULL, -- 'transaction', 'product', 'customer', etc.
+  action VARCHAR(20) NOT NULL, -- 'create', 'read', 'update', 'delete'
+  description TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 35 granular permissions for all system resources
+CREATE INDEX idx_permissions_resource ON permissions(resource);
+CREATE INDEX idx_permissions_action ON permissions(action);
+```
+
+#### role_permissions
+```sql
+CREATE TABLE role_permissions (
+  role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
+  permission_id INTEGER REFERENCES permissions(id) ON DELETE CASCADE,
+  assigned_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (role_id, permission_id)
+);
+
+CREATE INDEX idx_role_permissions_role ON role_permissions(role_id);
+CREATE INDEX idx_role_permissions_perm ON role_permissions(permission_id);
+```
+
+#### employees
+```sql
+CREATE TABLE employees (
+  id SERIAL PRIMARY KEY,
+  employee_number VARCHAR(20) UNIQUE NOT NULL, -- EMP-XXXXXX
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  phone VARCHAR(20),
+  hire_date DATE NOT NULL,
+  termination_date DATE,
+  role_id INTEGER NOT NULL REFERENCES roles(id),
+  assigned_terminal_id UUID REFERENCES terminals(id) ON DELETE SET NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_employees_email ON employees(email);
+CREATE INDEX idx_employees_role ON employees(role_id);
+CREATE INDEX idx_employees_active ON employees(is_active);
+CREATE INDEX idx_employees_number ON employees(employee_number);
+```
+
 ### Database Functions
 
 #### generate_transaction_number()
@@ -746,6 +815,23 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
+#### generate_employee_number()
+```sql
+CREATE OR REPLACE FUNCTION generate_employee_number()
+RETURNS TRIGGER AS $$
+DECLARE
+  next_num INTEGER;
+BEGIN
+  SELECT COALESCE(MAX(CAST(SUBSTRING(employee_number FROM 5) AS INTEGER)), 0) + 1
+  INTO next_num
+  FROM employees;
+
+  NEW.employee_number := 'EMP-' || LPAD(next_num::TEXT, 6, '0');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
 ### Database Triggers
 
 ```sql
@@ -806,6 +892,13 @@ AFTER UPDATE ON purchase_order_items
 FOR EACH ROW
 WHEN (NEW.quantity_received <> OLD.quantity_received)
 EXECUTE FUNCTION update_po_status();
+
+-- Auto-generate employee numbers
+CREATE TRIGGER set_employee_number
+BEFORE INSERT ON employees
+FOR EACH ROW
+WHEN (NEW.employee_number IS NULL OR NEW.employee_number = '')
+EXECUTE FUNCTION generate_employee_number();
 ```
 
 ---
@@ -1560,6 +1653,317 @@ curl http://localhost:3000/api/v1/purchase-orders/reorder-suggestions \
 
 ---
 
+### Employee Management
+
+#### POST /employees
+Create new employee.
+
+**Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/employees \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@company.com",
+    "phone": "555-0100",
+    "hire_date": "2026-02-14",
+    "role_id": 2,
+    "assigned_terminal_id": "terminal-uuid"
+  }'
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "employee_number": "EMP-000001",
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@company.com",
+    "phone": "555-0100",
+    "hire_date": "2026-02-14",
+    "role_id": 2,
+    "role_name": "cashier",
+    "assigned_terminal_id": "terminal-uuid",
+    "is_active": true,
+    "created_at": "2026-02-14T10:00:00.000Z",
+    "updated_at": "2026-02-14T10:00:00.000Z"
+  }
+}
+```
+
+#### GET /employees
+Get all employees with filters and pagination.
+
+**Query Parameters**:
+- `search` (string): Search by name, email, or employee number
+- `role_id` (number): Filter by role
+- `is_active` (boolean): Filter by active status
+- `page` (number): Page number (default: 1)
+- `limit` (number): Items per page (default: 10)
+
+**Request**:
+```bash
+curl "http://localhost:3000/api/v1/employees?search=john&is_active=true&page=1" \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "employee_number": "EMP-000001",
+        "first_name": "John",
+        "last_name": "Doe",
+        "email": "john.doe@company.com",
+        "phone": "555-0100",
+        "hire_date": "2026-02-14",
+        "role_name": "cashier",
+        "is_active": true
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "totalItems": 1,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+#### GET /employees/:id
+Get employee by ID with full details.
+
+**Request**:
+```bash
+curl http://localhost:3000/api/v1/employees/1 \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**: Same as create response
+
+#### PUT /employees/:id
+Update employee information.
+
+**Request**:
+```bash
+curl -X PUT http://localhost:3000/api/v1/employees/1 \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "555-0199",
+    "role_id": 3,
+    "assigned_terminal_id": "new-terminal-uuid"
+  }'
+```
+
+**Note**: Cannot update hire_date after creation.
+
+#### DELETE /employees/:id
+Deactivate employee (soft delete).
+
+**Request**:
+```bash
+curl -X DELETE http://localhost:3000/api/v1/employees/1 \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Employee deactivated successfully",
+  "data": {
+    "id": 1,
+    "employee_number": "EMP-000001",
+    "is_active": false
+  }
+}
+```
+
+---
+
+### Role & Permission Management
+
+#### GET /roles
+Get all roles.
+
+**Request**:
+```bash
+curl http://localhost:3000/api/v1/roles \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "role_name": "admin",
+      "description": "Full system access",
+      "is_active": true,
+      "created_at": "2026-02-14T08:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "role_name": "cashier",
+      "description": "Basic POS operations",
+      "is_active": true,
+      "created_at": "2026-02-14T08:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### GET /roles/:id
+Get role by ID with all assigned permissions.
+
+**Request**:
+```bash
+curl http://localhost:3000/api/v1/roles/1 \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "role_name": "admin",
+    "description": "Full system access",
+    "is_active": true,
+    "permissions": [
+      {
+        "id": 1,
+        "permission_name": "create_transaction",
+        "resource": "transaction",
+        "action": "create",
+        "description": "Create new transaction"
+      },
+      {
+        "id": 2,
+        "permission_name": "view_transaction",
+        "resource": "transaction",
+        "action": "read",
+        "description": "View transaction details"
+      }
+    ]
+  }
+}
+```
+
+#### POST /roles
+Create new role.
+
+**Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/roles \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role_name": "supervisor",
+    "description": "Supervise cashiers and handle voids"
+  }'
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 5,
+    "role_name": "supervisor",
+    "description": "Supervise cashiers and handle voids",
+    "is_active": true,
+    "created_at": "2026-02-14T11:00:00.000Z"
+  }
+}
+```
+
+#### GET /permissions
+Get all available permissions.
+
+**Request**:
+```bash
+curl http://localhost:3000/api/v1/permissions \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "permission_name": "create_transaction",
+      "resource": "transaction",
+      "action": "create",
+      "description": "Create new transaction"
+    },
+    {
+      "id": 2,
+      "permission_name": "void_transaction",
+      "resource": "transaction",
+      "action": "delete",
+      "description": "Void existing transaction"
+    }
+  ]
+}
+```
+
+#### POST /roles/:id/permissions
+Assign permission to role.
+
+**Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/roles/5/permissions \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "permission_id": 3
+  }'
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Permission assigned to role successfully"
+}
+```
+
+#### DELETE /roles/:roleId/permissions/:permissionId
+Revoke permission from role.
+
+**Request**:
+```bash
+curl -X DELETE http://localhost:3000/api/v1/roles/5/permissions/3 \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Permission revoked from role successfully"
+}
+```
+
+---
+
 ## Frontend Architecture
 
 ### Component Hierarchy
@@ -1604,14 +2008,26 @@ App
 │   │       ├── ValuationReport
 │   │       ├── MovementReport
 │   │       └── CategorySummaryReport
-│   └── PurchaseOrdersPage
-│       ├── PurchaseOrderFormPage
-│       │   ├── VendorSelector
-│       │   ├── ProductSelector
-│       │   └── POLineItemTable
-│       ├── PurchaseOrderDetailsPage
-│       │   └── ReceiveItemsModal
-│       └── ReorderSuggestionsPage
+│   ├── PurchaseOrdersPage
+│   │   ├── PurchaseOrderFormPage
+│   │   │   ├── VendorSelector
+│   │   │   ├── ProductSelector
+│   │   │   └── POLineItemTable
+│   │   ├── PurchaseOrderDetailsPage
+│   │   │   └── ReceiveItemsModal
+│   │   └── ReorderSuggestionsPage
+│   ├── EmployeesPage
+│   │   ├── EmployeeSearchBar
+│   │   ├── EmployeeFilters (role, active status)
+│   │   ├── EmployeeTable
+│   │   └── Pagination
+│   ├── EmployeeFormPage
+│   │   ├── EmployeeForm (create/edit)
+│   │   └── DeactivateConfirmModal
+│   └── RolesPage
+│       ├── RoleCard
+│       ├── CreateRoleModal
+│       └── PermissionsModal (permission matrix)
 └── Common Components
     ├── Pagination
     ├── LoadingSpinner
@@ -1691,6 +2107,21 @@ App
     draft: DraftPO | null,
     loading: boolean,
     error: string | null
+  },
+  employees: {
+    items: Employee[],
+    selectedEmployee: Employee | null,
+    pagination: Pagination,
+    filters: EmployeeFilters,
+    isLoading: boolean,
+    error: string | null
+  },
+  roles: {
+    roles: Role[],
+    selectedRole: RoleWithPermissions | null,
+    permissions: Permission[],
+    isLoading: boolean,
+    error: string | null
   }
 }
 ```
@@ -1713,6 +2144,10 @@ App
 - `/purchase-orders/reorder-suggestions` - ReorderSuggestionsPage
 - `/purchase-orders/:id` - PurchaseOrderDetailsPage (view/receive)
 - `/purchase-orders/:id/edit` - PurchaseOrderFormPage (edit)
+- `/employees` - EmployeesPage (list view with filters)
+- `/employees/new` - EmployeeFormPage (create)
+- `/employees/:id/edit` - EmployeeFormPage (edit/deactivate)
+- `/roles` - RolesPage (role and permission management)
 
 ### State Management Patterns
 
@@ -2169,10 +2604,11 @@ brew services restart redis
 
 ---
 
-**Documentation Version**: 1.3
+**Documentation Version**: 1.4
 **Last Updated**: February 14, 2026
 **Maintained By**: Development Team
 **Major Updates**:
+- v1.4 (Feb 14, 2026): Added Phase 4A Employee Management (RBAC with 4 roles, 35 permissions, employee CRUD, 69 tests, 5,466 lines of code)
 - v1.3 (Feb 14, 2026): Added Phase 3D testing documentation (106 tests, 2,289 lines of test code)
 - v1.2 (Feb 8, 2026): Added Phase 3C (Inventory Reports) and Phase 3D (Purchase Orders) feature documentation
 - v1.1 (Feb 8, 2026): Added comprehensive inline JSDoc documentation (63 files, 100% coverage)

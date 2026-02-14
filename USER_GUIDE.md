@@ -1,7 +1,7 @@
 # POS System - User Guide
 
-**Version**: 1.1
-**Last Updated**: February 8, 2026
+**Version**: 1.2
+**Last Updated**: February 14, 2026
 **For**: Cashiers, Managers, and Administrators
 
 ---
@@ -15,8 +15,9 @@
 5. [Product Categories](#product-categories)
 6. [Inventory Management](#inventory-management)
 7. [Purchase Order Management](#purchase-order-management)
-8. [Troubleshooting](#troubleshooting)
-9. [FAQ](#faq)
+8. [Employee Management](#employee-management)
+9. [Troubleshooting](#troubleshooting)
+10. [FAQ](#faq)
 
 ---
 
@@ -42,6 +43,8 @@ After logging in, you'll see the main POS interface with navigation buttons at t
 - **👥 Customers** - Manage customer information
 - **📁 Categories** - Organize products by category
 - **📦 Inventory** - Manage product stock levels
+- **🛒 Purchase Orders** - Create and manage supplier orders
+- **👥 Employees** - Manage staff and roles (Admin/Manager only)
 - **📋 History** - View past transactions
 - **Logout** - Sign out of the system
 
@@ -763,6 +766,188 @@ If you need to cancel an order (vendor out of stock, changed plans, etc.):
 - Managers: Review and approve POs promptly
 - Close POs once complete (keeps list clean)
 - Only cancel with good reason and documentation
+
+---
+
+## Employee Management
+
+> **Note**: These features are typically restricted to Admin and Manager roles.
+
+### Accessing Employee Management
+
+1. From the POS main screen, click the **👥 Employees** button in the header
+2. You'll see the Employee Management page with a list of all employees
+
+### Viewing Employees
+
+The Employee Management page shows:
+- **Employee Number** (e.g., EMP-000001)
+- **Name** (first and last name)
+- **Email**
+- **Phone** (if provided)
+- **Role** (admin, manager, supervisor, cashier)
+- **Hire Date**
+- **Status** (Active/Inactive badge)
+- **Actions** (Edit button)
+
+### Searching and Filtering
+
+**Search Bar**:
+- Type employee name, email, or employee number
+- Press Enter or click the **Search** button
+- Results update automatically
+
+**Filters**:
+- **All Roles** dropdown - Filter by specific role (admin, manager, supervisor, cashier)
+- **All Status** dropdown - Show active only, inactive only, or all employees
+
+**Clear Filters**:
+- Click the **Clear** button to reset all filters and show all employees
+
+### Creating a New Employee
+
+1. Click the **+ New Employee** button in the top right
+2. Fill in the required fields:
+   - **First Name** * (required)
+   - **Last Name** * (required)
+   - **Email** * (required, must be unique)
+   - **Phone** (optional)
+   - **Hire Date** * (required, defaults to today)
+   - **Role** * (required, select from dropdown)
+   - **Assigned Terminal ID** (optional)
+
+3. Click **Create Employee**
+4. The system will:
+   - Auto-generate an employee number (EMP-000001, EMP-000002, etc.)
+   - Set status to Active by default
+   - Show success message
+   - Return to employee list
+
+### Editing an Employee
+
+1. Find the employee in the list
+2. Click the yellow **Edit** button
+3. Update any fields you wish to change
+4. **Note**: Hire Date cannot be changed after creation
+5. Click **Update Employee** to save changes
+
+**What You Can Edit**:
+- First Name, Last Name
+- Email (must remain unique)
+- Phone
+- Role assignment
+- Assigned Terminal
+
+**What You Cannot Edit**:
+- Employee Number (auto-generated, permanent)
+- Hire Date (locked after creation)
+
+### Deactivating an Employee
+
+> **Warning**: Deactivating an employee prevents them from accessing the system. Use this when employees leave or are terminated.
+
+1. Open the employee in edit mode
+2. Click the red **Deactivate Employee** button (top right)
+3. Review the confirmation modal:
+   - Shows employee name
+   - Warns they will lose system access
+4. Click **Deactivate** to confirm or **Cancel** to abort
+5. The employee status changes to **Inactive**
+
+**Effects of Deactivation**:
+- Employee can no longer log in
+- Status badge turns red
+- Historical records remain intact (transactions, activities)
+- Employee can be edited but not reactivated (no "undo")
+
+---
+
+### Role & Permission Management
+
+> **Note**: Only Admins should access this feature. It controls who can do what in the system.
+
+### Accessing Role Management
+
+1. From the POS main screen, click the **👥 Employees** button
+2. Navigate to the roles section or access via direct URL
+
+**Alternative**: Some systems may have a separate **Roles** button in the navigation
+
+### Viewing Roles
+
+The Roles page shows:
+- **Role Name** (e.g., admin, manager, supervisor, cashier)
+- **Description** (what this role is for)
+- **Number of Assigned Permissions** (out of 35 total)
+- **Manage Permissions** button
+
+**Default Roles**:
+1. **Admin** - Full system access (all 35 permissions)
+2. **Manager** - Manage inventory, POs, reports, approve transactions (25 permissions)
+3. **Supervisor** - Supervise cashiers, handle voids and refunds (15 permissions)
+4. **Cashier** - Basic POS operations, customer management (10 permissions)
+
+### Creating a New Role
+
+1. Click the **+ New Role** button (top right)
+2. Fill in the modal form:
+   - **Role Name** * (required, e.g., "supervisor", "team_lead")
+   - **Description** (optional, describe responsibilities)
+3. Click **Create Role**
+4. The new role appears in the grid with 0 permissions
+5. Click **Manage Permissions** to assign permissions
+
+### Managing Permissions
+
+1. Find the role and click **Manage Permissions**
+2. A modal opens showing all 35 available permissions
+3. The header shows: **"Permissions for [role_name]"** with count (e.g., "Assigned: 15 / 35")
+
+**Permission Format**:
+- ☐ **Permission Name** (e.g., `create_transaction`)
+- Description (e.g., "Create new transaction")
+- Checked = Assigned, Unchecked = Not assigned
+
+**To Assign a Permission**:
+- Check the box next to the permission
+- It saves automatically
+- Count updates in real-time
+
+**To Revoke a Permission**:
+- Uncheck the box next to the permission
+- It saves automatically
+- Count updates in real-time
+
+**Available Permission Categories**:
+- **Transactions**: create, view, void, refund
+- **Products**: create, view, update, delete, manage_inventory
+- **Customers**: create, view, update, delete
+- **Categories**: create, view, update, delete
+- **Inventory**: view, adjust, view_reports
+- **Purchase Orders**: create, view, update, delete, submit, approve, receive, cancel, close
+- **Employees**: create, view, update, delete (deactivate)
+- **Roles**: create, view, assign_permissions, revoke_permissions
+- **Reports**: view_sales, view_inventory, view_analytics
+
+### Best Practices
+
+**Role Design**:
+- Keep roles focused on job functions (cashier vs manager)
+- Don't over-permission roles (principle of least privilege)
+- Review role permissions quarterly
+- Document role purposes in the description field
+
+**Employee Management**:
+- Use descriptive role names (avoid generic names like "user1")
+- Always assign roles when creating employees
+- Deactivate employees immediately upon termination
+- Regularly audit employee list for inactive accounts
+
+**Security**:
+- Limit who has Admin role (typically 1-2 people)
+- Managers should not have delete permissions for transactions
+- Cashiers should not access employee or role management
+- Review permissions when employees change positions
 
 ---
 
