@@ -1,3 +1,31 @@
+/**
+ * @fileoverview Employee Management Page
+ *
+ * Main employee listing and management interface for the POS system. Displays
+ * a paginated table of employees with advanced search and filtering capabilities.
+ *
+ * Features:
+ * - Search by name, email, or employee number (fuzzy search)
+ * - Filter by role (dropdown with all available roles)
+ * - Filter by active status (active only, inactive only, or all)
+ * - Pagination with page navigation controls
+ * - Edit employee (navigates to EmployeeFormPage)
+ * - Create new employee (navigates to EmployeeFormPage)
+ * - Visual status badges (green for active, red for inactive)
+ *
+ * State Management:
+ * - Uses employees Redux slice for employee list, filters, pagination
+ * - Uses roles Redux slice for role dropdown options
+ * - Local state for search input to enable debouncing
+ *
+ * Navigation:
+ * - Back button: navigates to POS page (/pos)
+ * - New Employee button: navigates to employee form (/employees/new)
+ * - Edit button: navigates to edit form (/employees/:id/edit)
+ *
+ * @component
+ */
+
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -12,56 +40,117 @@ import {
 } from '../store/slices/employees.slice';
 import { fetchRoles } from '../store/slices/roles.slice';
 
+/**
+ * EmployeesPage Component
+ *
+ * Main employee management interface with list view, search, and filters.
+ * Uses Redux for state management and React Router for navigation.
+ *
+ * Component Flow:
+ * 1. On mount: fetches employees and roles from API
+ * 2. User interacts: search input, filter dropdowns, pagination buttons
+ * 3. On filter change: dispatches Redux actions and triggers re-fetch
+ * 4. On edit click: navigates to edit form with employee ID
+ *
+ * @returns {JSX.Element} Rendered employee management page with header, search bar, table, and pagination
+ *
+ * @example
+ * // Route configuration in App.tsx
+ * <Route path="/employees" element={<EmployeesPage />} />
+ */
 const EmployeesPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  // Redux state selectors
   const { items: employees, pagination, filters, isLoading } = useSelector(
     (state: RootState) => state.employees
   );
   const { roles } = useSelector((state: RootState) => state.roles);
+
+  // Local state for search input (enables debouncing if needed)
   const [searchInput, setSearchInput] = useState(filters.search);
 
+  /**
+   * Initial data fetch on component mount
+   * Fetches employees with default filters and all roles for dropdown
+   */
   useEffect(() => {
     dispatch(fetchEmployees());
     dispatch(fetchRoles());
   }, [dispatch]);
 
+  /**
+   * Handle search button click
+   * Updates Redux search filter and triggers employee list re-fetch
+   */
   const handleSearch = () => {
     dispatch(setSearch(searchInput));
     dispatch(fetchEmployees());
   };
 
+  /**
+   * Handle clear filters button click
+   * Resets all filters to defaults (search="", role=all, status=active) and re-fetches
+   */
   const handleClearFilters = () => {
     setSearchInput('');
     dispatch(clearFilters());
     dispatch(fetchEmployees());
   };
 
+  /**
+   * Handle role filter dropdown change
+   * Updates Redux role filter and triggers re-fetch
+   * @param {React.ChangeEvent<HTMLSelectElement>} e - Select change event
+   */
   const handleRoleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     dispatch(setRoleFilter(value ? parseInt(value) : undefined));
     dispatch(fetchEmployees());
   };
 
+  /**
+   * Handle active status filter dropdown change
+   * Updates Redux active filter and triggers re-fetch
+   * @param {React.ChangeEvent<HTMLSelectElement>} e - Select change event
+   */
   const handleActiveFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     dispatch(setActiveFilter(value === 'all' ? undefined : value === 'true'));
     dispatch(fetchEmployees());
   };
 
+  /**
+   * Handle pagination page change
+   * Updates Redux page number and triggers re-fetch
+   * @param {number} page - Page number to navigate to (1-indexed)
+   */
   const handlePageChange = (page: number) => {
     dispatch(setPage(page));
     dispatch(fetchEmployees());
   };
 
+  /**
+   * Navigate to create employee form
+   * Opens EmployeeFormPage in create mode
+   */
   const handleCreateNew = () => {
     navigate('/employees/new');
   };
 
+  /**
+   * Navigate to edit employee form
+   * Opens EmployeeFormPage in edit mode with employee ID
+   * @param {number} id - Employee ID to edit
+   */
   const handleEditEmployee = (id: number) => {
     navigate(`/employees/${id}/edit`);
   };
 
+  /**
+   * Inline style objects for component styling
+   * Uses consistent design patterns from other pages (white header, gray background)
+   */
   const styles = {
     page: {
       minHeight: '100vh',
