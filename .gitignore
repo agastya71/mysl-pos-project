@@ -11,6 +11,7 @@ yarn.lock
 .env.local
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
 .env.*.local
 
@@ -85,6 +86,15 @@ secrets/
 *.pem
 *.key
 *.cert
+
+# Backups
+backups/
+*.sql.gz
+
+# SSL Certificates
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.cert
 
 # Terraform
 *.tfstate
