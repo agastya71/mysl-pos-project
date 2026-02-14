@@ -555,12 +555,248 @@ node --inspect-brk node_modules/.bin/jest --runInBand
 npm test -- --verbose
 ```
 
+## Phase Testing Documentation
+
+### Phase 3D: Purchase Orders - Complete Test Suite
+
+**Completed:** February 2026
+**Total Test Code:** 2,289 lines
+**Total Test Cases:** 106 (31 backend unit + 29 backend API + 46 frontend slice)
+**Pass Rate:** 100%
+**Coverage:** Backend 86.03%, Frontend 77.23%
+
+#### Backend Unit Tests
+**File:** `backend/src/__tests__/unit/services/purchaseOrder.service.test.ts`
+- **Lines:** 830
+- **Tests:** 31 passing
+- **Coverage:** 86.03% (exceeds 85% target)
+- **Pattern:** Jest with proper mocking, test isolation via mockReset()
+
+**Test Coverage:**
+```typescript
+describe('PurchaseOrderService', () => {
+  // 31 tests covering all 11 service methods:
+  // - createPO (5 tests): success, errors, validations, multi-item calculations
+  // - getPOById (2 tests): success, not found
+  // - getPOs (4 tests): pagination, filter by vendor/status, search
+  // - updatePO (3 tests): success, status validation, not found
+  // - deletePO (3 tests): success, status validation, not found
+  // - submitPO (3 tests): success, no items validation, status validation
+  // - approvePO (2 tests): success, status validation
+  // - receiveItems (3 tests): success, over-receiving validation, status validation
+  // - cancelPO (2 tests): success, already closed error
+  // - closePO (2 tests): success, not received error
+  // - getReorderSuggestions (2 tests): success with grouping, empty result
+});
+```
+
+**Key Testing Patterns:**
+- **Mock Isolation:** Use `mockReset()` in `beforeEach()` to prevent test bleed
+- **Nested Calls:** Chain multiple `mockResolvedValueOnce()` for functions that call other functions
+- **Transaction Testing:** Mock BEGIN/COMMIT/ROLLBACK for database transactions
+- **Status Transitions:** Validate business logic prevents invalid state changes
+
+#### Backend API Integration Tests
+**File:** `backend/src/__tests__/integration/purchaseOrder.api.test.ts`
+- **Lines:** 619
+- **Tests:** 29 passing
+- **Coverage:** All 11 API endpoints
+- **Pattern:** Supertest with mocked database and authentication
+
+**Endpoint Coverage:**
+- POST /purchase-orders (4 tests): create with items, validation, errors
+- GET /purchase-orders (4 tests): list, pagination, filter by vendor/status, search
+- GET /purchase-orders/:id (2 tests): get details, not found
+- PUT /purchase-orders/:id (2 tests): update draft, status validation
+- DELETE /purchase-orders/:id (3 tests): delete draft, status validation, not found
+- POST /:id/submit (3 tests): submit for approval, no items error, status validation
+- POST /:id/approve (2 tests): approve PO, status validation
+- POST /:id/receive (3 tests): receive items, over-receiving validation, status validation
+- POST /:id/cancel (2 tests): cancel with reason, already closed error
+- POST /:id/close (2 tests): close PO, not received error
+- GET /reorder-suggestions (2 tests): get suggestions, empty result
+
+**Integration Test Structure:**
+```typescript
+describe('Purchase Order API Integration Tests', () => {
+  let app: express.Application;
+  let mockClient: any;
+
+  beforeAll(() => {
+    // Setup Express app with routes
+    app = express();
+    app.use(express.json());
+
+    // Mock authentication middleware
+    (authenticateToken as jest.Mock) = jest.fn((req, _res, next) => {
+      req.user = { userId: 'user-123', role: 'admin' };
+      next();
+    });
+
+    app.use('/api/v1/purchase-orders', purchaseOrderRoutes);
+  });
+
+  beforeEach(() => {
+    // Reset mocks and setup mock database client
+    mockClient = { query: jest.fn(), release: jest.fn() };
+    (pool.connect as jest.Mock).mockResolvedValue(mockClient);
+  });
+
+  it('should create purchase order', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [mockVendor], rowCount: 1 }) // Vendor check
+      .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 });    // Insert PO
+
+    const response = await request(app)
+      .post('/api/v1/purchase-orders')
+      .send(createPOData)
+      .expect(201);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.po_number).toMatch(/PO-\d{8}-\d{4}/);
+  });
+});
+```
+
+#### Frontend Redux Slice Tests
+**File:** `pos-client/src/__tests__/unit/slices/purchaseOrders.slice.test.ts`
+- **Lines:** 840
+- **Tests:** 46 passing
+- **Coverage:** 77.23% statement, 57.84% branch, 64.77% function, 78.34% line
+- **Pattern:** Redux Toolkit with configureStore, mock API, comprehensive state testing
+
+**Test Coverage:**
+```typescript
+describe('purchaseOrders slice', () => {
+  // 46 tests covering:
+
+  // Initial state (1 test)
+  it('should return initial state', () => {
+    expect(purchaseOrdersReducer(undefined, { type: '' })).toEqual(initialState);
+  });
+
+  // Filter actions (6 tests)
+  describe('filter actions', () => {
+    it('should set vendor filter', () => { ... });
+    it('should set status filter', () => { ... });
+    it('should set order type filter', () => { ... });
+    it('should set date range filter', () => { ... });
+    it('should set search filter', () => { ... });
+    it('should clear all filters', () => { ... });
+  });
+
+  // Pagination (2 tests)
+  describe('pagination', () => {
+    it('should set page', () => { ... });
+    it('should set page size', () => { ... });
+  });
+
+  // Selection (2 tests)
+  describe('selection', () => {
+    it('should select PO', () => { ... });
+    it('should clear selection', () => { ... });
+  });
+
+  // Draft management (4 tests)
+  describe('draft management', () => {
+    it('should initialize draft', () => { ... });
+    it('should initialize draft with items', () => { ... });
+    it('should clear draft', () => { ... });
+    it('should update draft field', () => { ... });
+  });
+
+  // Line items (7 tests)
+  describe('line items', () => {
+    it('should add line item', () => { ... });
+    it('should add multiple line items', () => { ... });
+    it('should update quantity', () => { ... });
+    it('should update cost', () => { ... });
+    it('should remove line item', () => { ... });
+    it('should clear line items', () => { ... });
+    it('should calculate totals with shipping', () => { ... });
+  });
+
+  // Async thunks (23 tests)
+  describe('async thunks', () => {
+    // fetchPOs (4 tests)
+    it('should handle fetchPOs pending', async () => { ... });
+    it('should handle fetchPOs fulfilled', async () => { ... });
+    it('should handle fetchPOs rejected', async () => { ... });
+    it('should read filters from state when fetching', async () => { ... });
+
+    // fetchPOById (3 tests)
+    // createPOThunk (3 tests)
+    // updatePOThunk (1 test)
+    // deletePOThunk (1 test)
+    // submitPOThunk, approvePOThunk, cancelPOThunk, closePOThunk (4 tests)
+    // receiveItemsThunk (1 test)
+    // fetchReorderSuggestions (2 tests)
+    // fetchVendors (2 tests)
+  });
+});
+```
+
+**Testing Patterns Used:**
+- **Mock Store:** Use `configureStore()` with real reducer for authentic state updates
+- **Mock API:** Mock entire API module to prevent real HTTP calls
+- **Async Testing:** Test pending/fulfilled/rejected states for all thunks
+- **State Validation:** Verify state structure after each action
+- **Calculation Testing:** Verify subtotal/tax/total calculations in line items
+
+#### Running Phase 3D Tests
+
+```bash
+# Backend tests only
+cd backend
+npm test -- purchaseOrder.service.test.ts
+npm test -- purchaseOrder.api.test.ts
+
+# Frontend tests only
+cd pos-client
+npm test -- purchaseOrders.slice.test.ts
+
+# With coverage
+cd backend
+npm run test:coverage -- purchaseOrder.service.test.ts
+
+cd pos-client
+npm run test:coverage -- purchaseOrders.slice.test.ts
+```
+
+#### Key Learnings
+
+**1. Test Isolation is Critical**
+- Always use `mockReset()` instead of `mockClear()` in `beforeEach()`
+- Prevents mock data from bleeding between tests
+- Ensures complete isolation of test state
+
+**2. Mock Strategy for Complex Flows**
+- Functions calling other functions need chained mocks
+- Example: `createPO` calls `getPOById` internally
+- Solution: Chain enough `mockResolvedValueOnce()` calls
+
+**3. Integration Test Best Practices**
+- Use Supertest for HTTP assertions
+- Mock authentication middleware to bypass JWT verification
+- Mock database pool, not individual queries (provides flexibility)
+- Test both success and error paths
+
+**4. Redux Slice Testing**
+- Use real reducer with `configureStore()` for authentic testing
+- Mock the entire API module to prevent HTTP calls
+- Test all three states of async thunks: pending, fulfilled, rejected
+- Verify state shape and values after every action
+
+---
+
 ## Resources
 
 - [Jest Documentation](https://jestjs.io/docs/getting-started)
 - [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
 - [Testing Best Practices](https://testingjavascript.com/)
 - [TypeScript with Jest](https://kulshekhar.github.io/ts-jest/)
+- [Redux Testing](https://redux.js.org/usage/writing-tests)
+- [Supertest Documentation](https://github.com/visionmedia/supertest)
 
 ## Contributing
 
@@ -570,8 +806,9 @@ When contributing new features:
 2. Ensure existing tests still pass
 3. Run coverage to verify adequate test coverage
 4. Update this document if adding new testing patterns
+5. Follow the Phase 3D testing patterns as reference
 
 ---
 
-**Last Updated:** February 2026
+**Last Updated:** February 14, 2026
 **Maintained By:** POS Development Team
