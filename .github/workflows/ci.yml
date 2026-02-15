@@ -52,6 +52,7 @@ jobs:
       - name: Run unit tests
         run: npm test --workspace=backend
         env:
+          NODE_ENV: test
           DB_HOST: localhost
           DB_PORT: 5432
           DB_NAME: pos_test
@@ -59,6 +60,7 @@ jobs:
           DB_PASSWORD: test_password
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+          REDIS_PASSWORD: ""
           JWT_SECRET: test_secret
           JWT_REFRESH_SECRET: test_refresh_secret
 
@@ -87,6 +89,8 @@ jobs:
 
       - name: Run tests
         run: npm test --workspace=pos-client
+        env:
+          NODE_ENV: test
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
