@@ -33,7 +33,8 @@
     "hardenedRuntime": true,
     "gatekeeperAssess": false,
     "entitlements": "build/entitlements.mac.plist",
-    "entitlementsInherit": "build/entitlements.mac.plist"
+    "entitlementsInherit": "build/entitlements.mac.plist",
+    "icon": "build/icon.icns"
   },
   "dmg": {
     "title": "${productName} ${version}",
@@ -66,7 +67,8 @@
       }
     ],
     "artifactName": "${productName}-Setup-${version}.${ext}",
-    "verifyUpdateCodeSignature": false
+    "verifyUpdateCodeSignature": false,
+    "icon": "build/icon.ico"
   },
   "nsis": {
     "oneClick": false,
@@ -94,7 +96,8 @@
     ],
     "category": "Office",
     "synopsis": "Point of Sale Terminal Application",
-    "description": "Desktop application for point of sale operations including sales, inventory, and customer management."
+    "description": "Desktop application for point of sale operations including sales, inventory, and customer management.",
+    "icon": "build/icon.png"
   },
   "appImage": {
     "artifactName": "${productName}-${version}.${ext}"

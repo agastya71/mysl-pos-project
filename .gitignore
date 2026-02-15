@@ -18,6 +18,8 @@ yarn.lock
 # Build outputs
 dist/
 build/
+!pos-client/build/
+!pos-client/build/**
 *.tsbuildinfo
 out/
 
