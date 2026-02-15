@@ -78,9 +78,11 @@ jobs:
       - name: Create test environment
         run: |
           cp .env.production.template .env.production
-          echo "DB_PASSWORD=test_password" >> .env.production
+          echo "DATABASE_NAME=pos_test" >> .env.production
+          echo "DATABASE_USER=pos_test" >> .env.production
+          echo "DATABASE_PASSWORD=test_password" >> .env.production
           echo "REDIS_PASSWORD=test_password" >> .env.production
-          echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env.production
+          echo "JWT_ACCESS_SECRET=$(openssl rand -base64 32)" >> .env.production
           echo "JWT_REFRESH_SECRET=$(openssl rand -base64 32)" >> .env.production
 
       - name: Start services
