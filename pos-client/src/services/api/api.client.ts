@@ -1,19 +1,57 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api/v1';
+// Default API URL for development or web deployment
+const DEFAULT_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api/v1';
 
 class ApiClient {
   private client: AxiosInstance;
+  private baseURL: string = DEFAULT_API_URL;
 
   constructor() {
     this.client = axios.create({
-      baseURL: API_URL,
+      baseURL: this.baseURL,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
     this.setupInterceptors();
+    this.initializeFromElectronConfig();
+  }
+
+  /**
+   * Initialize API URL from Electron configuration (if running in Electron)
+   * Falls back to environment variable or localhost if not in Electron
+   */
+  private async initializeFromElectronConfig() {
+    if (window.electron?.config) {
+      try {
+        const config = await window.electron.config.get();
+        if (config.apiUrl && config.apiUrl !== this.baseURL) {
+          this.updateBaseURL(config.apiUrl);
+          console.log('API URL loaded from Electron config:', config.apiUrl);
+        }
+      } catch (error) {
+        console.error('Failed to load Electron config, using default API URL:', error);
+      }
+    }
+  }
+
+  /**
+   * Update the base URL for API requests
+   * Useful when API URL changes at runtime
+   */
+  public updateBaseURL(newBaseURL: string) {
+    this.baseURL = newBaseURL;
+    this.client.defaults.baseURL = newBaseURL;
+    console.log('API base URL updated to:', newBaseURL);
+  }
+
+  /**
+   * Get the current base URL
+   */
+  public getBaseURL(): string {
+    return this.baseURL;
   }
 
   private setupInterceptors() {
@@ -39,7 +77,7 @@ class ApiClient {
           try {
             const refreshToken = localStorage.getItem('refreshToken');
             if (refreshToken) {
-              const response = await axios.post(`${API_URL}/auth/refresh`, {
+              const response = await axios.post(`${this.baseURL}/auth/refresh`, {
                 refreshToken,
               });
 
@@ -68,4 +106,9 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient().getClient();
+// Export singleton instance
+const apiClientInstance = new ApiClient();
+export const apiClient = apiClientInstance.getClient();
+
+// Export the instance for accessing methods like updateBaseURL
+export const apiClientManager = apiClientInstance;
