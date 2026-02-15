@@ -1,0 +1,139 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          # Generate changelog
+          if [ -z "$PREV_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges)
+          else
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges)
+          fi
+
+          # Save to file
+          cat > release_notes.md << EOF
+          ## What's Changed
+
+          ${CHANGELOG}
+
+          ## Downloads
+
+          Choose the installer for your platform:
+
+          ### Windows
+          - **POS-Terminal-Setup-${{ steps.get_version.outputs.version }}.exe** - Standard installer (recommended)
+          - **POS-Terminal-Portable-${{ steps.get_version.outputs.version }}.exe** - Portable version (no installation)
+
+          ### macOS
+          - **POS-Terminal-${{ steps.get_version.outputs.version }}.dmg** - Intel Macs
+          - **POS-Terminal-${{ steps.get_version.outputs.version }}-arm64.dmg** - Apple Silicon (M1/M2/M3)
+
+          ### Linux
+          - **POS-Terminal-${{ steps.get_version.outputs.version }}.AppImage** - Universal (all distros)
+          - **pos-terminal_${{ steps.get_version.outputs.version }}_amd64.deb** - Debian/Ubuntu
+
+          ### Verification
+          Verify downloads with \`SHA256SUMS.txt\`
+
+          ## Installation
+          See [Terminal Installation Guide](docs/DEPLOYMENT_TERMINAL.md)
+
+          ## Docker Images
+          \`\`\`bash
+          docker pull ghcr.io/${{ github.repository }}/backend:${{ steps.get_version.outputs.version }}
+          \`\`\`
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...v${{ steps.get_version.outputs.version }}
+          EOF
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release v${{ steps.get_version.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  upload-artifacts:
+    needs: create-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Combine checksums
+        run: |
+          cd artifacts
+          cat */SHA256SUMS-*.txt > SHA256SUMS.txt
+          echo "Combined checksums:"
+          cat SHA256SUMS.txt
+
+      - name: Upload Windows installers
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          files: artifacts/windows-installers/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS installers
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          files: |
+            artifacts/macos-installers/*.dmg
+            artifacts/macos-installers/*.zip
+            artifacts/macos-installers/latest-mac.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux installers
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          files: |
+            artifacts/linux-installers/*.AppImage
+            artifacts/linux-installers/*.deb
+            artifacts/linux-installers/latest-linux.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload checksums
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          files: artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

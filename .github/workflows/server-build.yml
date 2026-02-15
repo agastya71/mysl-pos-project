@@ -1,0 +1,102 @@
+name: Server Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'schema/**'
+      - 'docker-compose.production.yml'
+      - 'backend/Dockerfile.production'
+      - '.github/workflows/server-build.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/backend
+
+jobs:
+  build-server:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./backend/Dockerfile.production
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main node --version
+
+  test-stack:
+    needs: build-server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create test environment
+        run: |
+          cp .env.production.template .env.production
+          echo "DB_PASSWORD=test_password" >> .env.production
+          echo "REDIS_PASSWORD=test_password" >> .env.production
+          echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env.production
+          echo "JWT_REFRESH_SECRET=$(openssl rand -base64 32)" >> .env.production
+
+      - name: Start services
+        run: |
+          docker compose -f docker-compose.production.yml up -d
+          sleep 30
+
+      - name: Check service health
+        run: |
+          docker compose -f docker-compose.production.yml ps
+          curl -f http://localhost:3000/health || exit 1
+
+      - name: View logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.production.yml logs
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.production.yml down -v

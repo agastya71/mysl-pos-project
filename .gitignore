@@ -108,3 +108,6 @@ nginx/ssl/*.cert
 *.bak
 *.swp
 *~
+
+# GitHub Actions artifacts
+artifacts/

@@ -1,0 +1,142 @@
+name: Terminal Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pos-client/**'
+      - '.github/workflows/terminal-build.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build --workspace=pos-client
+
+      - name: Build Windows installer
+        run: npm run build:win --workspace=pos-client
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate checksums
+        working-directory: pos-client/release
+        run: |
+          Get-ChildItem -Filter *.exe | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($hash.Hash)  $($_.Name)" | Out-File -Append SHA256SUMS-windows.txt -Encoding ASCII
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers
+          path: |
+            pos-client/release/*.exe
+            pos-client/release/SHA256SUMS-windows.txt
+          retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build --workspace=pos-client
+
+      - name: Build macOS installer
+        run: npm run build:mac --workspace=pos-client
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Uncomment for code signing:
+          # CSC_LINK: ${{ secrets.CSC_LINK }}
+          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Generate checksums
+        working-directory: pos-client/release
+        run: |
+          shasum -a 256 *.dmg *.zip > SHA256SUMS-macos.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installers
+          path: |
+            pos-client/release/*.dmg
+            pos-client/release/*.zip
+            pos-client/release/latest-mac.yml
+            pos-client/release/SHA256SUMS-macos.txt
+          retention-days: 30
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build --workspace=pos-client
+
+      - name: Build Linux installer
+        run: npm run build:linux --workspace=pos-client
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate checksums
+        working-directory: pos-client/release
+        run: |
+          shasum -a 256 *.AppImage *.deb > SHA256SUMS-linux.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installers
+          path: |
+            pos-client/release/*.AppImage
+            pos-client/release/*.deb
+            pos-client/release/latest-linux.yml
+            pos-client/release/SHA256SUMS-linux.txt
+          retention-days: 30
