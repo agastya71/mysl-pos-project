@@ -69,7 +69,6 @@
     ],
     "icon": "build/icon.ico",
     "artifactName": "${productName}-Setup-${version}.${ext}",
-    "publisherName": "POS System",
     "verifyUpdateCodeSignature": false
   },
   "nsis": {
@@ -103,12 +102,7 @@
     "icon": "build/icon.png",
     "category": "Office",
     "synopsis": "Point of Sale Terminal Application",
-    "description": "Desktop application for point of sale operations including sales, inventory, and customer management.",
-    "desktop": {
-      "Name": "POS Terminal",
-      "Type": "Application",
-      "Categories": "Office;Finance;"
-    }
+    "description": "Desktop application for point of sale operations including sales, inventory, and customer management."
   },
   "appImage": {
     "artifactName": "${productName}-${version}.${ext}"
@@ -127,6 +121,5 @@
   "publish": {
     "provider": "generic",
     "url": "https://updates.yourcompany.com/pos-terminal"
-  },
-  "afterSign": "scripts/notarize.js"
+  }
 }
