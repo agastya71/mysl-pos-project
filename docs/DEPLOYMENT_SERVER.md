@@ -1,650 +1,679 @@
-# POS System Server Deployment Guide
+# POS System - Server Deployment Guide
 
-**Version:** 1.0.0-deployment
-**Last Updated:** February 14, 2026
-**Estimated Time:** 30-45 minutes
+**Version:** 1.0.2
+**Last Updated:** February 15, 2026
+**Target Platform:** Ubuntu 20.04+ (or similar Linux distributions)
+
+---
 
 ## Table of Contents
 
 1. [Overview](#overview)
 2. [Prerequisites](#prerequisites)
-3. [System Requirements](#system-requirements)
+3. [System Architecture](#system-architecture)
 4. [Installation Steps](#installation-steps)
-5. [SSL Certificate Setup](#ssl-certificate-setup)
-6. [Configuration](#configuration)
-7. [Database Initialization](#database-initialization)
-8. [Backup Configuration](#backup-configuration)
-9. [Monitoring](#monitoring)
-10. [Troubleshooting](#troubleshooting)
+5. [Configuration Reference](#configuration-reference)
+6. [SSL/TLS Setup](#ssltls-setup)
+7. [Backup and Restore](#backup-and-restore)
+8. [Monitoring and Maintenance](#monitoring-and-maintenance)
+9. [Troubleshooting](#troubleshooting)
+10. [Security Recommendations](#security-recommendations)
 
 ---
 
 ## Overview
 
-This guide walks you through deploying the POS System server infrastructure on Ubuntu 20.04+ using Docker. The server stack includes:
+The POS System server is a containerized application stack that provides the backend API, database, and cache services for all POS terminals. The server runs as a Docker Compose stack with the following components:
 
-- **PostgreSQL 16** - Primary database
-- **Redis 7** - Session management and caching
-- **Backend API** - Node.js/Express REST API
-- **Nginx** - Reverse proxy with SSL/TLS termination
+- **PostgreSQL 16**: Primary database for all POS data
+- **Redis 7**: Session cache and real-time data
+- **Backend API**: Node.js/Express REST API
+- **Nginx**: Reverse proxy with SSL/TLS termination
 
-**Architecture:**
-```
-Internet → Nginx (SSL :443) → Backend API (:3000) → PostgreSQL (:5432)
-                                                   → Redis (:6379)
-```
+**Deployment Model**: Centralized server with multiple distributed terminals
 
 ---
 
 ## Prerequisites
 
-### Required Software
+### Hardware Requirements
 
-1. **Ubuntu Server 20.04 LTS or newer**
-   - Ubuntu 20.04, 22.04, or 24.04 recommended
-   - Fresh installation preferred
+**Minimum:**
+- 4 CPU cores
+- 4 GB RAM
+- 50 GB storage (SSD recommended)
+- Network interface with static IP or domain name
 
-2. **Docker & Docker Compose**
-   - Docker Engine 20.10+
-   - Docker Compose v2.0+
+**Recommended (for production):**
+- 8 CPU cores
+- 8 GB RAM
+- 100 GB storage (SSD)
+- Dedicated network interface
+- UPS for power protection
 
-3. **SSL Certificate**
-   - Valid SSL certificate for HTTPS (Let's Encrypt or commercial)
-   - Or use self-signed certificates for internal networks
+### Software Requirements
 
-### Required Access
-
-- Root or sudo access
-- SSH access to the server
-- Domain name pointing to server IP (for SSL)
+- **Operating System**: Ubuntu 20.04 LTS or later (Ubuntu 22.04 LTS recommended)
+- **Docker**: Version 20.10 or later
+- **Docker Compose**: Version 2.0 or later
+- **SSL Certificate**: Let's Encrypt certificate or valid commercial SSL certificate
+- **Domain Name**: Recommended (e.g., pos-server.yourcompany.com)
 
 ### Network Requirements
 
-- Open ports:
-  - `443` (HTTPS) - Terminal connections
-  - `80` (HTTP) - Optional, for Let's Encrypt
-  - `22` (SSH) - Server management
-- Firewall configured to allow terminal connections
+- **Static IP Address**: Required for terminal connectivity
+- **Open Ports**:
+  - `80/tcp` - HTTP (redirects to HTTPS)
+  - `443/tcp` - HTTPS (API access)
+  - `22/tcp` - SSH (for administration)
+- **Firewall**: Configure to allow only necessary ports
+- **DNS**: A record pointing to server IP (if using domain name)
+
+### Access Requirements
+
+- Root or sudo access to the server
+- SSH access for remote administration
+- Basic knowledge of Docker and Linux command line
 
 ---
 
-## System Requirements
+## System Architecture
 
-### Minimum Requirements
-
-- **CPU:** 2 cores
-- **RAM:** 4 GB
-- **Disk:** 50 GB SSD
-- **Network:** 100 Mbps
-
-### Recommended for Production
-
-- **CPU:** 4 cores or more
-- **RAM:** 8 GB or more
-- **Disk:** 100 GB SSD with RAID 1
-- **Network:** 1 Gbps
-- **Backup:** Automated offsite backups
-
-### Capacity Planning
-
-- **Database:** ~100 MB per 10,000 transactions
-- **Logs:** ~50 MB per day
-- **Backups:** Retain 30 days = ~3-5 GB
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Server Host (Ubuntu)                  │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │            Docker Compose Stack                     │ │
+│  │                                                     │ │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │ │
+│  │  │PostgreSQL│  │  Redis   │  │  Backend API     │ │ │
+│  │  │  :5432   │  │  :6379   │  │  (Node.js)       │ │ │
+│  │  │          │  │          │  │  :3000           │ │ │
+│  │  └─────┬────┘  └────┬─────┘  └────────┬─────────┘ │ │
+│  │        │            │                  │           │ │
+│  │        └────────────┴──────────────────┘           │ │
+│  │                     │                              │ │
+│  │              ┌──────▼────────┐                     │ │
+│  │              │     Nginx     │                     │ │
+│  │              │  (SSL/TLS)    │                     │ │
+│  │              │  :80, :443    │                     │ │
+│  │              └───────────────┘                     │ │
+│  └────────────────────┬────────────────────────────────┘ │
+└───────────────────────┼──────────────────────────────────┘
+                        │ HTTPS
+        ┌───────────────┼───────────────┐
+        │               │               │
+    ┌───▼────┐     ┌───▼────┐     ┌───▼────┐
+    │Terminal│     │Terminal│     │Terminal│
+    │   #1   │     │   #2   │     │   #3   │
+    └────────┘     └────────┘     └────────┘
+```
 
 ---
 
 ## Installation Steps
 
-### Step 1: Install Docker
+### Step 1: System Preparation
+
+#### 1.1 Update System Packages
 
 ```bash
-# Update package index
-sudo apt-get update
+sudo apt update && sudo apt upgrade -y
+```
 
-# Install prerequisites
-sudo apt-get install -y \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release
+#### 1.2 Install Docker
 
-# Add Docker's official GPG key
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
-    sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+```bash
+# Install Docker using official convenience script
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
 
-# Set up Docker repository
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-  https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+# Add your user to docker group (optional, for non-root access)
+sudo usermod -aG docker $USER
+newgrp docker
 
-# Install Docker Engine
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+# Verify Docker installation
+docker --version
+```
 
+**Expected output:** `Docker version 24.x.x` or later
+
+#### 1.3 Install Docker Compose
+
+```bash
+# Docker Compose v2 is included with Docker Desktop
 # Verify installation
-sudo docker --version
-sudo docker compose version
+docker compose version
 ```
 
-**Expected output:**
-```
-Docker version 24.0.7, build afdd53b
-Docker Compose version v2.23.0
-```
+**Expected output:** `Docker Compose version v2.x.x` or later
 
-### Step 2: Download Deployment Package
+#### 1.4 Install Additional Tools
 
 ```bash
-# Create deployment directory
-sudo mkdir -p /opt/pos-system
-cd /opt/pos-system
+# Install required utilities
+sudo apt install -y curl git openssl
 
-# Option A: Clone from Git (if using version control)
-git clone https://github.com/yourcompany/pos-system.git .
-
-# Option B: Extract from release package
-# Upload pos-system-server-v1.0.0.tar.gz to server, then:
-tar -xzf pos-system-server-v1.0.0.tar.gz
+# Verify installations
+curl --version
+git --version
+openssl version
 ```
 
-### Step 3: Generate Secure Secrets
+### Step 2: Download Server Package
+
+#### Option A: Using Git (Recommended)
 
 ```bash
-# Generate JWT secret (32 bytes)
-JWT_SECRET=$(openssl rand -base64 32)
-echo "JWT_SECRET: $JWT_SECRET"
+# Clone the repository
+cd /opt
+sudo git clone https://github.com/agastya71/mysl-pos-project.git pos-system
+cd pos-system
 
-# Generate JWT refresh secret (32 bytes)
-JWT_REFRESH_SECRET=$(openssl rand -base64 32)
-echo "JWT_REFRESH_SECRET: $JWT_REFRESH_SECRET"
-
-# Generate database password (16 bytes)
-DB_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-16)
-echo "DB_PASSWORD: $DB_PASSWORD"
-
-# Generate Redis password (16 bytes)
-REDIS_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-16)
-echo "REDIS_PASSWORD: $REDIS_PASSWORD"
-
-# IMPORTANT: Save these secrets securely!
-# You'll need them in the next step.
+# Checkout specific version (recommended for production)
+sudo git checkout v1.0.2
 ```
 
-**⚠️ SECURITY WARNING:**
-- Save these secrets in a secure password manager
-- Never commit secrets to version control
-- Rotate secrets every 90 days in production
-
-### Step 4: Configure Environment
+#### Option B: Using Release Archive
 
 ```bash
-# Copy environment template
+# Download release archive
+cd /opt
+sudo curl -L -o pos-system.tar.gz \
+  https://github.com/agastya71/mysl-pos-project/archive/refs/tags/v1.0.2.tar.gz
+
+# Extract archive
+sudo tar -xzf pos-system.tar.gz
+sudo mv mysl-pos-project-1.0.2 pos-system
+cd pos-system
+```
+
+### Step 3: Configuration Setup
+
+#### 3.1 Create Production Environment File
+
+```bash
+# Copy template to production environment file
 cp .env.production.template .env.production
 
-# Edit configuration
-nano .env.production
+# Set secure permissions
+chmod 600 .env.production
 ```
 
-**Update these required values:**
+#### 3.2 Generate Secure Secrets
 
 ```bash
-# Application
-NODE_ENV=production
-PORT=3000
-API_VERSION=v1
+# Generate JWT secrets
+export JWT_ACCESS_SECRET=$(openssl rand -base64 32)
+export JWT_REFRESH_SECRET=$(openssl rand -base64 32)
 
-# Database (PostgreSQL)
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=pos_production
-DB_USER=pos_admin
-DB_PASSWORD=<YOUR_DB_PASSWORD>      # From Step 3
+# Generate database password
+export DB_PASSWORD=$(openssl rand -base64 24)
 
-# Redis
+# Generate Redis password
+export REDIS_PASSWORD=$(openssl rand -base64 24)
+
+echo "Save these values - you'll need them for configuration:"
+echo "JWT_ACCESS_SECRET: $JWT_ACCESS_SECRET"
+echo "JWT_REFRESH_SECRET: $JWT_REFRESH_SECRET"
+echo "DB_PASSWORD: $DB_PASSWORD"
+echo "REDIS_PASSWORD: $REDIS_PASSWORD"
+```
+
+⚠️ **IMPORTANT**: Save these secrets securely! You'll need them if you ever need to restore or reconfigure the server.
+
+#### 3.3 Edit Environment Configuration
+
+Open `.env.production` in your preferred text editor:
+
+```bash
+sudo nano .env.production
+```
+
+Update the following values:
+
+```bash
+# Database Configuration
+DATABASE_HOST=postgres
+DATABASE_PORT=5432
+DATABASE_NAME=pos_production
+DATABASE_USER=pos_admin
+DATABASE_PASSWORD=<paste DB_PASSWORD here>
+
+# Redis Configuration
 REDIS_HOST=redis
 REDIS_PORT=6379
-REDIS_PASSWORD=<YOUR_REDIS_PASSWORD> # From Step 3
+REDIS_PASSWORD=<paste REDIS_PASSWORD here>
 
-# JWT Authentication
-JWT_SECRET=<YOUR_JWT_SECRET>         # From Step 3
-JWT_REFRESH_SECRET=<YOUR_JWT_REFRESH_SECRET> # From Step 3
-JWT_EXPIRES_IN=1h
-JWT_REFRESH_EXPIRES_IN=7d
+# JWT Configuration
+JWT_ACCESS_SECRET=<paste JWT_ACCESS_SECRET here>
+JWT_REFRESH_SECRET=<paste JWT_REFRESH_SECRET here>
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
 
-# Server URLs
-SERVER_URL=https://pos.yourcompany.com
-CLIENT_URL=https://pos.yourcompany.com
+# Backend Configuration
+NODE_ENV=production
+PORT=3000
 
-# SSL/TLS (update paths if different)
-SSL_CERT_PATH=./nginx/ssl/fullchain.pem
-SSL_KEY_PATH=./nginx/ssl/privkey.pem
-
-# Backup Configuration
-BACKUP_DIR=/opt/pos-system/backups
-BACKUP_RETENTION_DAYS=30
+# Backend Docker Image (use specific version for production)
+BACKEND_IMAGE=ghcr.io/agastya71/mysl-pos-project/backend:1.0.2
 ```
 
-**Save and exit:** `Ctrl+O`, `Enter`, `Ctrl+X`
+Save and exit (Ctrl+X, Y, Enter in nano).
 
----
+### Step 4: SSL/TLS Certificate Setup
 
-## SSL Certificate Setup
+Choose one of the following options:
 
-Choose **one** of the following options:
-
-### Option A: Let's Encrypt (Recommended for Public Servers)
+#### Option A: Let's Encrypt (Recommended for Production)
 
 ```bash
-# Install Certbot
-sudo apt-get install -y certbot
+# Install certbot
+sudo apt install -y certbot
 
-# Stop services if running
-sudo docker compose -f docker-compose.production.yml down
-
-# Obtain certificate (replace with your domain)
+# Generate certificate (replace with your domain)
 sudo certbot certonly --standalone \
-    -d pos.yourcompany.com \
-    --agree-tos \
-    --email admin@yourcompany.com
+  -d pos-server.yourcompany.com \
+  --non-interactive \
+  --agree-tos \
+  -m admin@yourcompany.com
 
-# Copy certificates to deployment directory
+# Copy certificates to nginx directory
 sudo mkdir -p nginx/ssl
-sudo cp /etc/letsencrypt/live/pos.yourcompany.com/fullchain.pem nginx/ssl/
-sudo cp /etc/letsencrypt/live/pos.yourcompany.com/privkey.pem nginx/ssl/
-sudo chmod 644 nginx/ssl/fullchain.pem
-sudo chmod 600 nginx/ssl/privkey.pem
+sudo cp /etc/letsencrypt/live/pos-server.yourcompany.com/fullchain.pem \
+  nginx/ssl/cert.pem
+sudo cp /etc/letsencrypt/live/pos-server.yourcompany.com/privkey.pem \
+  nginx/ssl/key.pem
+
+# Set secure permissions
+sudo chmod 644 nginx/ssl/cert.pem
+sudo chmod 600 nginx/ssl/key.pem
 ```
 
-**Certificate Renewal:**
-```bash
-# Certificates expire every 90 days
-# Set up automatic renewal with cron:
-sudo crontab -e
-
-# Add this line:
-0 3 * * * certbot renew --quiet --deploy-hook "docker compose -f /opt/pos-system/docker-compose.production.yml restart nginx"
-```
-
-### Option B: Self-Signed Certificate (For Internal Networks)
+#### Option B: Self-Signed Certificate (Testing/Internal Networks)
 
 ```bash
-# Create SSL directory
+# Create ssl directory
 mkdir -p nginx/ssl
 
 # Generate self-signed certificate (valid for 365 days)
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout nginx/ssl/privkey.pem \
-    -out nginx/ssl/fullchain.pem \
-    -subj "/C=US/ST=State/L=City/O=Company/CN=pos.yourcompany.local"
+  -keyout nginx/ssl/key.pem \
+  -out nginx/ssl/cert.pem \
+  -subj "/C=US/ST=State/L=City/O=Company/OU=IT/CN=pos-server.local"
 
-# Set permissions
-chmod 644 nginx/ssl/fullchain.pem
-chmod 600 nginx/ssl/privkey.pem
+# Set secure permissions
+chmod 644 nginx/ssl/cert.pem
+chmod 600 nginx/ssl/key.pem
 ```
 
-**⚠️ Note:** Terminals will show security warnings with self-signed certificates. You'll need to accept the certificate in each terminal's configuration.
+⚠️ **Note**: Self-signed certificates will show security warnings in browsers and may require manual acceptance on terminals.
 
----
+### Step 5: Deploy Services
 
-## Configuration
+#### 5.1 Pull Docker Images
 
-### Database Configuration
-
-The PostgreSQL database is configured in `docker-compose.production.yml`. Default settings are optimized for the recommended system requirements.
-
-**Review settings** (optional):
 ```bash
-nano docker-compose.production.yml
+# Pull latest images
+docker compose -f docker-compose.production.yml pull
 ```
 
-Key PostgreSQL parameters:
-- `shared_buffers`: 256MB (25% of RAM)
-- `effective_cache_size`: 1GB (75% of RAM)
-- `max_connections`: 100
-
-**For larger deployments**, adjust these values based on your hardware.
-
-### Nginx Configuration
-
-Review and customize Nginx settings:
-```bash
-nano nginx/nginx.conf
-```
-
-Key settings:
-- `worker_processes`: auto (recommended)
-- `client_max_body_size`: 10M (for file uploads)
-- `ssl_protocols`: TLSv1.2 TLSv1.3 (secure defaults)
-
----
-
-## Database Initialization
-
-### Step 1: Build and Start Services
+#### 5.2 Start Services
 
 ```bash
-# Build the backend image
-./scripts/build-server.sh
-
-# Start all services
-sudo docker compose -f docker-compose.production.yml up -d
-
-# Check service status
-sudo docker compose -f docker-compose.production.yml ps
+# Start all services in detached mode
+docker compose -f docker-compose.production.yml \
+  --env-file .env.production \
+  up -d
 ```
 
 **Expected output:**
 ```
-NAME                  STATUS              PORTS
-pos-backend           Up 10 seconds       0.0.0.0:3000->3000/tcp
-pos-postgres          Up 12 seconds       0.0.0.0:5432->5432/tcp
-pos-redis             Up 12 seconds       0.0.0.0:6379->6379/tcp
-pos-nginx             Up 8 seconds        0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
+[+] Running 4/4
+ ✔ Container pos-postgres-prod  Started
+ ✔ Container pos-redis-prod     Started
+ ✔ Container pos-backend-prod   Started
+ ✔ Container pos-nginx-prod     Started
 ```
 
-### Step 2: Verify Migrations
-
-The backend automatically runs migrations on startup. Verify they completed:
+#### 5.3 Monitor Startup
 
 ```bash
-# Check backend logs
-sudo docker compose -f docker-compose.production.yml logs backend | grep -i migration
+# Watch container logs
+docker compose -f docker-compose.production.yml logs -f
 
-# You should see:
-# ✓ Database migration successful
-# Applied 58 migrations
+# Wait for "Database migrations completed" message
+# Press Ctrl+C to exit log view
 ```
 
-### Step 3: Create Initial Admin User
+**Expected log messages:**
+- PostgreSQL: `database system is ready to accept connections`
+- Redis: `Ready to accept connections`
+- Backend: `Starting migration system...`
+- Backend: `✓ All migrations completed successfully`
+- Backend: `Server started on port 3000`
 
-```bash
-# Connect to backend container
-sudo docker compose -f docker-compose.production.yml exec backend sh
+### Step 6: Database Initialization
 
-# Run seed script (creates admin user: admin/admin123)
-npm run seed
+The database is automatically initialized on first startup:
 
-# Exit container
-exit
+1. **Migrations**: All schema migrations run automatically
+2. **Seed Data**: Default data is inserted (admin user, sample data)
+
+#### Default Admin Credentials
+
+```
+Username: admin
+Password: admin123
 ```
 
-**Default credentials:**
-- Username: `admin`
-- Password: `admin123`
+⚠️ **CRITICAL**: Change the admin password immediately after first login!
 
-**⚠️ SECURITY:** Change the admin password immediately after first login!
+### Step 7: Verification
 
-### Step 4: Verify Health
+#### 7.1 Check Service Health
 
 ```bash
-# Check health endpoint
+# Check all containers are running
+docker compose -f docker-compose.production.yml ps
+```
+
+**Expected output:** All services should show "Up" status
+
+#### 7.2 Test Health Endpoint
+
+```bash
+# Test via HTTP (internal)
+curl http://localhost:3000/health
+
+# Test via HTTPS (external)
 curl -k https://localhost/health
+```
 
-# Expected response:
-# {"success":true,"data":{"status":"healthy","timestamp":"...","services":{"database":"connected","redis":"connected"}}}
+**Expected response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-02-15T10:30:00.000Z",
+  "services": {
+    "database": "connected",
+    "redis": "connected"
+  }
+}
+```
+
+#### 7.3 Test Authentication
+
+```bash
+# Test login endpoint
+curl -k -X POST https://localhost/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin123"
+  }'
+```
+
+**Expected response:**
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "...",
+      "username": "admin",
+      "role": "admin"
+    }
+  }
+}
+```
+
+#### 7.4 Verify Database
+
+```bash
+# Connect to PostgreSQL
+docker compose -f docker-compose.production.yml exec postgres \
+  psql -U pos_admin -d pos_production
+
+# Check tables
+\dt
+
+# Check terminal count
+SELECT COUNT(*) FROM terminals;
+
+# Exit psql
+\q
+```
+
+### Step 8: Firewall Configuration
+
+#### Using UFW (Ubuntu Firewall)
+
+```bash
+# Enable UFW if not already enabled
+sudo ufw enable
+
+# Allow SSH (IMPORTANT: do this first!)
+sudo ufw allow 22/tcp
+
+# Allow HTTP and HTTPS
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+# Check firewall status
+sudo ufw status verbose
+```
+
+**Expected output:**
+```
+Status: active
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW       Anywhere
+80/tcp                     ALLOW       Anywhere
+443/tcp                    ALLOW       Anywhere
 ```
 
 ---
 
-## Backup Configuration
+## Configuration Reference
 
-### Automated Backup Setup
+### Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `DATABASE_HOST` | PostgreSQL host | `postgres` | Yes |
+| `DATABASE_PORT` | PostgreSQL port | `5432` | Yes |
+| `DATABASE_NAME` | Database name | `pos_production` | Yes |
+| `DATABASE_USER` | Database user | `pos_admin` | Yes |
+| `DATABASE_PASSWORD` | Database password | - | Yes |
+| `REDIS_HOST` | Redis host | `redis` | Yes |
+| `REDIS_PORT` | Redis port | `6379` | Yes |
+| `REDIS_PASSWORD` | Redis password | - | Yes |
+| `JWT_ACCESS_SECRET` | JWT signing secret (access tokens) | - | Yes |
+| `JWT_REFRESH_SECRET` | JWT signing secret (refresh tokens) | - | Yes |
+| `JWT_ACCESS_EXPIRY` | Access token expiry | `15m` | No |
+| `JWT_REFRESH_EXPIRY` | Refresh token expiry | `7d` | No |
+| `NODE_ENV` | Node environment | `production` | Yes |
+| `PORT` | Backend port | `3000` | Yes |
+| `BACKEND_IMAGE` | Docker image for backend | `ghcr.io/.../backend:main` | Yes |
+
+---
+
+## SSL/TLS Setup
+
+### Let's Encrypt Renewal
+
+Let's Encrypt certificates expire after 90 days. Set up automatic renewal:
+
+```bash
+# Test renewal (dry run)
+sudo certbot renew --dry-run
+
+# Set up automatic renewal via cron
+sudo crontab -e
+```
+
+Add the following line to renew daily at 2 AM:
+
+```cron
+0 2 * * * certbot renew --quiet --deploy-hook "cd /opt/pos-system && cp /etc/letsencrypt/live/pos-server.yourcompany.com/*.pem nginx/ssl/ && docker compose -f docker-compose.production.yml restart nginx"
+```
+
+---
+
+## Backup and Restore
+
+### Automated Backups
+
+#### Configure Automated Backups
 
 ```bash
 # Make backup script executable
-chmod +x ./scripts/backup-database.sh
+chmod +x scripts/backup-database.sh
 
-# Test backup
+# Test manual backup
 ./scripts/backup-database.sh
-
-# Verify backup created
-ls -lh backups/
-# Should show: db_backup_YYYYMMDD_HHMMSS.sql.gz
 ```
 
-### Schedule Automated Backups
+**Expected output:**
+```
+Starting database backup...
+Backup completed: /opt/pos-system/backups/db_backup_20260215_103000.sql.gz
+```
+
+#### Set Up Cron Job
 
 ```bash
 # Edit crontab
 crontab -e
-
-# Add daily backup at 2 AM
-0 2 * * * /opt/pos-system/scripts/backup-database.sh >> /opt/pos-system/backups/backup.log 2>&1
 ```
 
-### Backup Retention
+Add daily backup at 3 AM:
 
-The backup script automatically:
-- Creates compressed SQL dumps
-- Retains backups for 30 days
-- Deletes backups older than 30 days
+```cron
+0 3 * * * cd /opt/pos-system && ./scripts/backup-database.sh >> /var/log/pos-backup.log 2>&1
+```
 
-**For offsite backups:**
+### Restore from Backup
+
 ```bash
-# Add to backup script or create separate cron job
-# Example: Upload to S3
-aws s3 sync /opt/pos-system/backups/ s3://your-bucket/pos-backups/
+# Stop backend service
+docker compose -f docker-compose.production.yml stop backend
+
+# Restore database
+cd /opt/pos-system
+./scripts/restore-database.sh backups/db_backup_20260215_103000.sql.gz
+
+# Start backend service
+docker compose -f docker-compose.production.yml start backend
 ```
+
+⚠️ **WARNING**: Restore will overwrite current database!
 
 ---
 
-## Monitoring
+## Monitoring and Maintenance
 
-### Health Checks
+### Service Status
 
-**Automated health check:**
 ```bash
-# Check every 5 minutes
-*/5 * * * * curl -k -f https://localhost/health > /dev/null 2>&1 || echo "POS Server Down!" | mail -s "ALERT: POS Server Health Check Failed" admin@yourcompany.com
+# Check all containers
+docker compose -f docker-compose.production.yml ps
+
+# View resource usage
+docker stats
 ```
 
-### Service Logs
+### Log Management
 
 ```bash
 # View all logs
-sudo docker compose -f docker-compose.production.yml logs -f
+docker compose -f docker-compose.production.yml logs
 
-# View specific service
-sudo docker compose -f docker-compose.production.yml logs -f backend
-sudo docker compose -f docker-compose.production.yml logs -f postgres
-sudo docker compose -f docker-compose.production.yml logs -f redis
-sudo docker compose -f docker-compose.production.yml logs -f nginx
+# Follow logs in real-time
+docker compose -f docker-compose.production.yml logs -f
 
-# View last 100 lines
-sudo docker compose -f docker-compose.production.yml logs --tail=100
+# View specific service logs
+docker compose -f docker-compose.production.yml logs backend
 ```
 
-### Database Monitoring
+### System Updates
 
 ```bash
-# Connect to PostgreSQL
-sudo docker compose -f docker-compose.production.yml exec postgres \
-    psql -U pos_admin -d pos_production
+# Pull latest images
+docker compose -f docker-compose.production.yml pull
 
-# Check database size
-SELECT pg_size_pretty(pg_database_size('pos_production'));
+# Restart services with new images
+docker compose -f docker-compose.production.yml up -d
 
-# Check active connections
-SELECT count(*) FROM pg_stat_activity WHERE datname = 'pos_production';
-
-# Check transaction count
-SELECT COUNT(*) FROM transactions;
-
-# Exit
-\q
-```
-
-### Resource Usage
-
-```bash
-# Check Docker container stats
-sudo docker stats
-
-# Check disk usage
-df -h /opt/pos-system
-
-# Check memory usage
-free -h
+# Remove old images
+docker image prune -f
 ```
 
 ---
 
 ## Troubleshooting
 
-### Services Won't Start
+### Service Won't Start
 
-**Check logs:**
-```bash
-sudo docker compose -f docker-compose.production.yml logs
-```
+1. Check logs:
+   ```bash
+   docker compose -f docker-compose.production.yml logs
+   ```
 
-**Common issues:**
-- Port conflicts (3000, 5432, 6379, 443 already in use)
-- Insufficient disk space
-- Invalid SSL certificates
+2. Check environment file:
+   ```bash
+   ls -la .env.production
+   ```
 
-**Solution:**
-```bash
-# Check port conflicts
-sudo netstat -tuln | grep -E ':(3000|5432|6379|443)'
+3. Check port conflicts:
+   ```bash
+   sudo netstat -tulpn | grep -E ':(80|443|3000|5432|6379)'
+   ```
 
-# Check disk space
-df -h
+### Database Connection Failed
 
-# Restart services
-sudo docker compose -f docker-compose.production.yml restart
-```
+1. Check PostgreSQL is running:
+   ```bash
+   docker compose -f docker-compose.production.yml ps postgres
+   ```
 
-### Database Connection Errors
+2. Check PostgreSQL logs:
+   ```bash
+   docker compose -f docker-compose.production.yml logs postgres
+   ```
 
-**Error:** `Connection refused` or `authentication failed`
-
-**Check:**
-```bash
-# Verify PostgreSQL is running
-sudo docker compose -f docker-compose.production.yml ps postgres
-
-# Check database logs
-sudo docker compose -f docker-compose.production.yml logs postgres
-
-# Verify credentials in .env.production
-grep DB_ .env.production
-```
-
-### Migration Failures
-
-**Error:** `Migration failed` or `Database schema out of date`
-
-**Solution:**
-```bash
-# Reset database (⚠️ DATA LOSS!)
-sudo docker compose -f docker-compose.production.yml down -v
-sudo docker compose -f docker-compose.production.yml up -d
-
-# Or restore from backup
-./scripts/restore-database.sh backups/db_backup_YYYYMMDD_HHMMSS.sql.gz
-```
-
-### SSL Certificate Errors
-
-**Error:** `SSL handshake failed` or `certificate expired`
-
-**Check certificate:**
-```bash
-# Verify certificate files exist
-ls -la nginx/ssl/
-
-# Check certificate expiration
-openssl x509 -in nginx/ssl/fullchain.pem -noout -dates
-
-# Test SSL connection
-openssl s_client -connect localhost:443 -showcerts
-```
-
-**Renew Let's Encrypt:**
-```bash
-sudo certbot renew
-sudo docker compose -f docker-compose.production.yml restart nginx
-```
-
-### High Memory Usage
-
-**Check Docker stats:**
-```bash
-sudo docker stats
-```
-
-**Increase PostgreSQL shared_buffers:**
-```bash
-nano docker-compose.production.yml
-# Update: command: -c shared_buffers=512MB
-sudo docker compose -f docker-compose.production.yml restart postgres
-```
+3. Test connection manually:
+   ```bash
+   docker compose -f docker-compose.production.yml exec postgres \
+     psql -U pos_admin -d pos_production -c "SELECT 1;"
+   ```
 
 ---
 
-## Maintenance
+## Security Recommendations
 
-### Updates
-
-**Update backend application:**
-```bash
-# Pull latest changes
-git pull origin main
-
-# Rebuild backend image
-./scripts/build-server.sh
-
-# Restart services
-sudo docker compose -f docker-compose.production.yml up -d backend
-
-# Verify health
-curl -k https://localhost/health
-```
-
-### Database Maintenance
-
-**Vacuum database (monthly):**
-```bash
-sudo docker compose -f docker-compose.production.yml exec postgres \
-    psql -U pos_admin -d pos_production -c "VACUUM ANALYZE;"
-```
-
-**Reindex (if performance degrades):**
-```bash
-sudo docker compose -f docker-compose.production.yml exec postgres \
-    psql -U pos_admin -d pos_production -c "REINDEX DATABASE pos_production;"
-```
+1. **Change Default Credentials** - Change admin password immediately
+2. **Secure Environment File** - `chmod 600 .env.production`
+3. **Regular Updates** - Update system packages and Docker images
+4. **Backup Encryption** - Encrypt sensitive backups with GPG
+5. **Network Security** - Use VPN, implement IP whitelisting
+6. **Monitoring** - Set up health check alerts
 
 ---
 
-## Security Best Practices
+## Support and Resources
 
-1. **Change default admin password immediately**
-2. **Use strong, unique secrets** (generated with openssl)
-3. **Enable firewall** (ufw or iptables)
-4. **Restrict SSH access** (key-based authentication only)
-5. **Keep system updated** (apt-get update && apt-get upgrade)
-6. **Monitor logs regularly** (check for suspicious activity)
-7. **Rotate secrets every 90 days**
-8. **Use SSL certificates from trusted CA** (Let's Encrypt or commercial)
-9. **Enable automated backups** (offsite storage)
-10. **Limit container resources** (prevent resource exhaustion)
+### Official Documentation
+
+- **GitHub**: https://github.com/agastya71/mysl-pos-project
+- **Issues**: https://github.com/agastya71/mysl-pos-project/issues
+- **Releases**: https://github.com/agastya71/mysl-pos-project/releases
 
 ---
 
-## Support
-
-For issues not covered in this guide, refer to:
-- [Troubleshooting Guide](TROUBLESHOOTING.md)
-- [Admin Guide](ADMIN_GUIDE.md)
-- GitHub Issues: https://github.com/yourcompany/pos-system/issues
-
----
-
-**Deployment complete!** Your POS server is ready to accept terminal connections.
-
-Next step: [Terminal Deployment Guide](DEPLOYMENT_TERMINAL.md)
+**End of Server Deployment Guide**
