@@ -56,10 +56,7 @@ services:
 
   # Backend API
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.production
-    image: pos-backend:${VERSION:-latest}
+    image: ${BACKEND_IMAGE:-ghcr.io/agastya71/mysl-pos-project/backend:main}
     container_name: pos-backend-prod
     restart: unless-stopped
     environment:
