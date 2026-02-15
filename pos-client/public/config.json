@@ -1,0 +1,7 @@
+{
+  "apiUrl": "http://localhost:3000/api/v1",
+  "terminalId": "",
+  "autoUpdate": true,
+  "updateCheckInterval": 3600000,
+  "environment": "development"
+}
