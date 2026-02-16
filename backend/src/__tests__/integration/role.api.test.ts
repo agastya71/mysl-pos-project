@@ -16,7 +16,7 @@ describe('Role API Integration Tests', () => {
     app = express();
     app.use(express.json());
 
-    (authenticateToken as jest.Mock) = jest.fn((req, _res, next) => {
+    (authenticateToken as jest.Mock).mockImplementation((req, _res, next) => {
       req.user = { userId: 'user-123', username: 'admin', role: 'admin' };
       next();
     });
@@ -35,8 +35,9 @@ describe('Role API Integration Tests', () => {
   });
 
   beforeEach(() => {
+    jest.clearAllMocks();
     mockQuery = jest.fn();
-    (pool.query as jest.Mock) = mockQuery;
+    (pool.query as jest.Mock).mockImplementation(mockQuery);
   });
 
   afterEach(() => {

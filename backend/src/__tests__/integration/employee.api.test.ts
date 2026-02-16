@@ -16,7 +16,7 @@ describe('Employee API Integration Tests', () => {
     app = express();
     app.use(express.json());
 
-    (authenticateToken as jest.Mock) = jest.fn((req, _res, next) => {
+    (authenticateToken as jest.Mock).mockImplementation((req, _res, next) => {
       req.user = { userId: 'user-123', username: 'admin', role: 'admin' };
       next();
     });
@@ -35,12 +35,9 @@ describe('Employee API Integration Tests', () => {
   });
 
   beforeEach(() => {
-    mockQuery = jest.fn();
-    (pool.query as jest.Mock) = mockQuery;
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
+    mockQuery = jest.fn();
+    (pool.query as jest.Mock).mockImplementation(mockQuery);
   });
 
   describe('POST /api/v1/employees', () => {
