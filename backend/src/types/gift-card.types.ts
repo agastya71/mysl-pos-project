@@ -38,7 +38,7 @@ export interface CreateGiftCardParams {
   recipient_name?: string;
   recipient_email?: string;
   recipient_phone?: string;
-  expires_at?: Date;
+  expires_at?: Date | string;
   purchased_by_customer_id?: string;
   purchased_transaction_id?: string;
 }
