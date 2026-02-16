@@ -20,10 +20,10 @@ describe('Transaction API Integration Tests', () => {
     // Mock authentication middleware
     (authenticateToken as jest.Mock).mockImplementation((req, _res, next) => {
       req.user = {
-        userId: 'user-123',
+        userId: '550e8400-e29b-41d4-a716-446655440020',
         username: 'testuser',
         role: 'cashier',
-        terminalId: 'terminal-123',
+        terminalId: '550e8400-e29b-41d4-a716-446655440001',
       };
       next();
     });
@@ -41,6 +41,7 @@ describe('Transaction API Integration Tests', () => {
         error: {
           code: err.code || 'INTERNAL_ERROR',
           message: err.message || 'Internal server error',
+          details: err.details || undefined,
         },
       });
     });
@@ -66,38 +67,71 @@ describe('Transaction API Integration Tests', () => {
   describe('POST /api/v1/transactions', () => {
     it('should create a transaction successfully', async () => {
       const requestBody = {
-        terminal_id: 'terminal-123',
-        customer_id: 'customer-123',
+        terminal_id: '550e8400-e29b-41d4-a716-446655440001',
+        customer_id: '550e8400-e29b-41d4-a716-446655440002',
         items: [
           {
-            product_id: 'product-123',
+            product_id: '550e8400-e29b-41d4-a716-446655440003',
             quantity: 2,
-            unit_price: 10.99,
           },
         ],
         payments: [
           {
-            method: 'cash',
-            amount: 25.00,
-            received_amount: 30.00,
+            payment_method: 'cash',
+            amount: 22.00,
+            payment_details: {
+              cash_received: 30.00,
+            },
           },
         ],
       };
 
-      // Mock successful transaction creation
+      // Mock pool.query for createProductSnapshot category lookup
+      (pool.query as jest.Mock).mockResolvedValueOnce({
+        rows: [{ name: 'Test Category' }],
+        rowCount: 1,
+      });
+
+      // Mock pool.query for getTransactionById (called after COMMIT)
+      (pool.query as jest.Mock).mockResolvedValueOnce({
+        rows: [{
+          id: '550e8400-e29b-41d4-a716-446655440010',
+          transaction_number: 'T001-000001',
+          status: 'completed',
+          subtotal: 21.98,
+          tax_amount: 0.02,
+          total_amount: 22.00,
+          items: [{
+            id: '550e8400-e29b-41d4-a716-446655440012',
+            product_id: '550e8400-e29b-41d4-a716-446655440003',
+            quantity: 2,
+            unit_price: 10.99,
+            line_total: 21.98,
+          }],
+          payments: [{
+            id: '550e8400-e29b-41d4-a716-446655440013',
+            payment_method: 'cash',
+            amount: 22.00,
+            details: {
+              cash_received: 30.00,
+              cash_change: 8.00,
+            },
+          }],
+        }],
+        rowCount: 1,
+      });
+
+      // Mock successful transaction creation (client.query calls)
       mockClient.query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
-        .mockResolvedValueOnce({ rows: [{ terminal_number: 'T001' }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ transaction_number: 'T001-000001' }] })
-        .mockResolvedValueOnce({ rows: [{ id: 'txn-123', transaction_number: 'T001-000001', status: 'draft' }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: 'product-123', name: 'Test Product', price: 10.99, quantity_in_stock: 10, tax_rate: 0.08 }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: 'item-123' }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: 'txn-123', subtotal: 21.98, total_amount: 23.74 }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: 'payment-123' }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: 'txn-123', status: 'completed' }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: 'txn-123', transaction_number: 'T001-000001', status: 'completed', total_amount: 23.74 }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: 'item-123', product_id: 'product-123', quantity: 2, unit_price: 10.99 }] })
-        .mockResolvedValueOnce({ rows: [{ id: 'payment-123', method: 'cash', amount: 25.00, received_amount: 30.00 }] })
+        .mockResolvedValueOnce({ rows: [{ terminal_number: 'T001' }], rowCount: 1 }) // SELECT terminal_number
+        .mockResolvedValueOnce({ rows: [{ transaction_number: 'T001-000001' }], rowCount: 1 }) // generate_transaction_number
+        .mockResolvedValueOnce({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440010', transaction_number: 'T001-000001', status: 'draft' }], rowCount: 1 }) // INSERT transaction
+        .mockResolvedValueOnce({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440003', name: 'Test Product', base_price: 10.99, quantity_in_stock: 10, tax_rate: 0.08, category_id: 'cat-123' }], rowCount: 1 }) // SELECT product
+        .mockResolvedValueOnce({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440012' }], rowCount: 1 }) // INSERT transaction_item
+        .mockResolvedValueOnce({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440013' }], rowCount: 1 }) // INSERT payment
+        .mockResolvedValueOnce({ rows: [{ id: 'detail-123' }], rowCount: 1 }) // INSERT payment_details
+        .mockResolvedValueOnce({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440010', status: 'completed' }], rowCount: 1 }) // UPDATE transaction
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // COMMIT
 
       const response = await request(app)
@@ -145,33 +179,34 @@ describe('Transaction API Integration Tests', () => {
 
   describe('GET /api/v1/transactions/:id', () => {
     it('should return transaction by ID', async () => {
+      const txnId = '550e8400-e29b-41d4-a716-446655440110';
       const mockTransaction = {
-        id: 'txn-123',
+        id: txnId,
         transaction_number: 'T001-000001',
         subtotal: 21.98,
         total_amount: 23.74,
         status: 'completed',
+        items: [{ id: 'item-1', product_id: 'prod-1', quantity: 2 }],
+        payments: [{ id: 'payment-1', payment_method: 'cash', amount: 25.00 }],
       };
 
-      mockClient.query
-        .mockResolvedValueOnce({ rows: [mockTransaction], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: 'item-1', product_id: 'prod-1', quantity: 2 }] })
-        .mockResolvedValueOnce({ rows: [{ id: 'payment-1', method: 'cash', amount: 25.00 }] });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockTransaction], rowCount: 1 });
 
       const response = await request(app)
-        .get('/api/v1/transactions/txn-123')
+        .get(`/api/v1/transactions/${txnId}`)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.id).toBe('txn-123');
+      expect(response.body.data.id).toBe(txnId);
       expect(response.body.data.transaction_number).toBe('T001-000001');
     });
 
     it('should return 404 if transaction not found', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      const validButNonExistentId = '550e8400-e29b-41d4-a716-446655440999';
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
-        .get('/api/v1/transactions/invalid-id')
+        .get(`/api/v1/transactions/${validButNonExistentId}`)
         .expect(404);
 
       expect(response.body.success).toBe(false);
@@ -185,8 +220,8 @@ describe('Transaction API Integration Tests', () => {
         { id: 'txn-2', transaction_number: 'T001-000002', total_amount: 15.50, status: 'completed' },
       ];
 
-      mockClient.query
-        .mockResolvedValueOnce({ rows: [{ count: '10' }] })
+      (pool.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [{ total: '10' }] })
         .mockResolvedValueOnce({ rows: mockTransactions });
 
       const response = await request(app)
@@ -200,8 +235,8 @@ describe('Transaction API Integration Tests', () => {
     });
 
     it('should filter transactions by status', async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ rows: [{ count: '2' }] })
+      (pool.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [{ total: '2' }] })
         .mockResolvedValueOnce({ rows: [{ id: 'txn-1', status: 'voided' }] });
 
       const response = await request(app)
@@ -214,8 +249,8 @@ describe('Transaction API Integration Tests', () => {
     });
 
     it('should filter transactions by date range', async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ rows: [{ count: '5' }] })
+      (pool.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [{ total: '5' }] })
         .mockResolvedValueOnce({ rows: [] });
 
       const response = await request(app)
@@ -229,20 +264,23 @@ describe('Transaction API Integration Tests', () => {
 
   describe('PUT /api/v1/transactions/:id/void', () => {
     it('should void a transaction successfully', async () => {
+      const txnId = '550e8400-e29b-41d4-a716-446655440100';
       const mockTransaction = {
-        id: 'txn-123',
+        id: txnId,
         transaction_number: 'T001-000001',
         status: 'completed',
       };
 
       mockClient.query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
-        .mockResolvedValueOnce({ rows: [mockTransaction], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ ...mockTransaction, status: 'voided' }], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [mockTransaction], rowCount: 1 }) // SELECT transaction
+        .mockResolvedValueOnce({ rows: [{ id: 'item-1', product_id: '550e8400-e29b-41d4-a716-446655440101', quantity: 2 }], rowCount: 1 }) // SELECT items
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // UPDATE product inventory
+        .mockResolvedValueOnce({ rows: [{ ...mockTransaction, status: 'voided' }], rowCount: 1 }) // UPDATE transaction
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // COMMIT
 
       const response = await request(app)
-        .put('/api/v1/transactions/txn-123/void')
+        .put(`/api/v1/transactions/${txnId}/void`)
         .send({ reason: 'Customer requested refund' })
         .expect(200);
 

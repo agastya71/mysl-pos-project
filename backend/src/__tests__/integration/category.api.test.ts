@@ -92,7 +92,7 @@ describe('Category API Integration Tests', () => {
         updated_at: new Date(),
       };
 
-      mockClient.query.mockResolvedValueOnce({ rows: [mockCategory], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockCategory], rowCount: 1 });
 
       const response = await request(app)
         .post('/api/v1/categories')
@@ -121,7 +121,7 @@ describe('Category API Integration Tests', () => {
         updated_at: new Date(),
       };
 
-      mockClient.query.mockResolvedValueOnce({ rows: [mockCategory], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockCategory], rowCount: 1 });
 
       const response = await request(app)
         .post('/api/v1/categories')
@@ -171,7 +171,7 @@ describe('Category API Integration Tests', () => {
         },
       ];
 
-      mockClient.query.mockResolvedValueOnce({ rows: mockCategories, rowCount: 2 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: mockCategories, rowCount: 2 });
 
       const response = await request(app)
         .get('/api/v1/categories')
@@ -193,7 +193,7 @@ describe('Category API Integration Tests', () => {
         },
       ];
 
-      mockClient.query.mockResolvedValueOnce({ rows: mockCategories, rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: mockCategories, rowCount: 1 });
 
       const response = await request(app)
         .get('/api/v1/categories?active_only=true')
@@ -218,7 +218,7 @@ describe('Category API Integration Tests', () => {
       };
 
       // Mock for getPurchaseOrderById - main query
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [mockCategory], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // children
 
@@ -231,7 +231,7 @@ describe('Category API Integration Tests', () => {
     });
 
     it('should return 404 if category not found', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
         .get('/api/v1/categories/nonexistent')
@@ -253,7 +253,7 @@ describe('Category API Integration Tests', () => {
         is_active: true,
       };
 
-      mockClient.query.mockResolvedValueOnce({ rows: [mockCategory], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockCategory], rowCount: 1 });
 
       const response = await request(app)
         .put('/api/v1/categories/cat-123')
@@ -268,7 +268,7 @@ describe('Category API Integration Tests', () => {
     });
 
     it('should return 404 if category not found', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
         .put('/api/v1/categories/nonexistent')
@@ -284,7 +284,7 @@ describe('Category API Integration Tests', () => {
   describe('DELETE /api/v1/categories/:id', () => {
     it('should soft delete category', async () => {
       // Mock check for products
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
         // Mock check for subcategories
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
@@ -300,7 +300,7 @@ describe('Category API Integration Tests', () => {
 
     it('should return 404 if category not found', async () => {
       // Mock check for products
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
         // Mock check for subcategories
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })

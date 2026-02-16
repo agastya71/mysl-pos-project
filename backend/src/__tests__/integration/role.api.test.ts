@@ -215,14 +215,24 @@ describe('Role API Integration Tests', () => {
         description: 'Updated description',
       };
 
-      const mockUpdatedRole = {
+      const mockExistingRole = {
         id: 1,
         role_name: 'admin',
-        description: 'Updated description',
+        description: 'Administrator',
         is_active: true,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+
+      const mockUpdatedRole = {
+        ...mockExistingRole,
+        description: 'Updated description',
         updated_at: '2026-02-14T10:00:00Z',
       };
 
+      // Mock getRoleById check
+      mockQuery.mockResolvedValueOnce({ rows: [mockExistingRole], rowCount: 1 });
+      // Mock updateRole
       mockQuery.mockResolvedValueOnce({ rows: [mockUpdatedRole], rowCount: 1 });
 
       const response = await request(app)
@@ -253,6 +263,16 @@ describe('Role API Integration Tests', () => {
         permission_id: 5,
       };
 
+      const mockRole = {
+        id: 1,
+        role_name: 'admin',
+        description: 'Administrator',
+        is_active: true,
+      };
+
+      // Mock getRoleById check
+      mockQuery.mockResolvedValueOnce({ rows: [mockRole], rowCount: 1 });
+      // Mock assignPermission
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
       const response = await request(app)
