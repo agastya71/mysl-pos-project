@@ -75,10 +75,16 @@ describe('Customer API Integration Tests', () => {
         ...requestBody,
         loyalty_points: 0,
         total_spent: 0,
+        total_transactions: 0,
         is_active: true,
+        created_at: new Date(),
+        updated_at: new Date(),
       };
 
-      mockClient.query.mockResolvedValueOnce({ rows: [mockCustomer], rowCount: 1 });
+      // Mock duplicate email check (returns empty)
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      // Mock insert customer
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockCustomer], rowCount: 1 });
 
       const response = await request(app)
         .post('/api/v1/customers')
@@ -104,7 +110,7 @@ describe('Customer API Integration Tests', () => {
         email: null,
       };
 
-      mockClient.query.mockResolvedValueOnce({ rows: [mockCustomer], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockCustomer], rowCount: 1 });
 
       const response = await request(app)
         .post('/api/v1/customers')
@@ -148,7 +154,7 @@ describe('Customer API Integration Tests', () => {
         loyalty_points: 100,
       };
 
-      mockClient.query.mockResolvedValueOnce({ rows: [mockCustomer], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockCustomer], rowCount: 1 });
 
       const response = await request(app)
         .get('/api/v1/customers/customer-123')
@@ -159,7 +165,7 @@ describe('Customer API Integration Tests', () => {
     });
 
     it('should return 404 if customer not found', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
         .get('/api/v1/customers/invalid-id')
@@ -176,7 +182,7 @@ describe('Customer API Integration Tests', () => {
         { id: 'c2', customer_number: 'CUST-000002', first_name: 'Jane', last_name: 'Smith' },
       ];
 
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ count: '10' }] })
         .mockResolvedValueOnce({ rows: mockCustomers });
 
@@ -190,7 +196,7 @@ describe('Customer API Integration Tests', () => {
     });
 
     it('should filter customers by search query', async () => {
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ count: '1' }] })
         .mockResolvedValueOnce({ rows: [{ id: 'c1', first_name: 'John' }] });
 
@@ -215,7 +221,7 @@ describe('Customer API Integration Tests', () => {
         ...updates,
       };
 
-      mockClient.query.mockResolvedValueOnce({ rows: [mockUpdatedCustomer], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockUpdatedCustomer], rowCount: 1 });
 
       const response = await request(app)
         .put('/api/v1/customers/customer-123')
@@ -227,7 +233,7 @@ describe('Customer API Integration Tests', () => {
     });
 
     it('should return 404 if customer not found', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
         .put('/api/v1/customers/invalid-id')
@@ -240,7 +246,7 @@ describe('Customer API Integration Tests', () => {
 
   describe('DELETE /api/v1/customers/:id', () => {
     it('should soft delete customer', async () => {
-      mockClient.query.mockResolvedValueOnce({
+      (pool.query as jest.Mock).mockResolvedValueOnce({
         rows: [{ id: 'customer-123', is_active: false }],
         rowCount: 1,
       });
@@ -253,7 +259,7 @@ describe('Customer API Integration Tests', () => {
     });
 
     it('should return 404 if customer not found', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
         .delete('/api/v1/customers/invalid-id')
@@ -276,7 +282,7 @@ describe('Customer API Integration Tests', () => {
         },
       ];
 
-      mockClient.query.mockResolvedValueOnce({ rows: mockResults });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: mockResults });
 
       const response = await request(app)
         .get('/api/v1/customers/search')

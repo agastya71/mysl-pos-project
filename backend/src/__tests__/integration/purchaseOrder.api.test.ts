@@ -109,7 +109,7 @@ describe('Purchase Order API Integration Tests', () => {
       };
 
       // Mock for createPO service
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ id: 'vendor-123' }], rowCount: 1 }) // Vendor check
         .mockResolvedValueOnce({ rows: [{ id: 'product-123' }], rowCount: 1 }) // Products check
@@ -244,7 +244,7 @@ describe('Purchase Order API Integration Tests', () => {
         status: 'draft',
       };
 
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 }) // PO query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // Items query
 
@@ -257,7 +257,7 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 404 for non-existent PO', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
         .get('/api/v1/purchase-orders/non-existent')
@@ -280,7 +280,7 @@ describe('Purchase Order API Integration Tests', () => {
         notes: 'Updated notes',
       };
 
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 }) // Check PO
         .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 }) // Update PO
@@ -300,7 +300,7 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 when updating non-draft PO', async () => {
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 });
 
@@ -315,7 +315,7 @@ describe('Purchase Order API Integration Tests', () => {
 
   describe('DELETE /api/v1/purchase-orders/:id', () => {
     it('should delete draft PO', async () => {
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 })
         .mockResolvedValueOnce({ rowCount: 1 });
 
@@ -327,7 +327,7 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 when deleting non-draft PO', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 });
 
       const response = await request(app)
         .delete('/api/v1/purchase-orders/po-123')
@@ -337,7 +337,7 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 404 for non-existent PO', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
         .delete('/api/v1/purchase-orders/non-existent')
@@ -354,7 +354,7 @@ describe('Purchase Order API Integration Tests', () => {
         status: 'submitted',
       };
 
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 }) // Check status
         .mockResolvedValueOnce({ rows: [{ count: '3' }], rowCount: 1 }) // Count items
         .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE
@@ -371,7 +371,7 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if PO has no items', async () => {
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 });
 
@@ -383,7 +383,7 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if PO not in draft status', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [{ status: 'submitted' }], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'submitted' }], rowCount: 1 });
 
       const response = await request(app)
         .post('/api/v1/purchase-orders/po-123/submit')
@@ -400,7 +400,7 @@ describe('Purchase Order API Integration Tests', () => {
         status: 'approved',
       };
 
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ status: 'submitted' }], rowCount: 1 }) // Check status
         .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE
         // Mock for getPOById
@@ -416,7 +416,7 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if PO not in submitted status', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 });
 
       const response = await request(app)
         .post('/api/v1/purchase-orders/po-123/approve')
@@ -442,7 +442,7 @@ describe('Purchase Order API Integration Tests', () => {
         status: 'partially_received',
       };
 
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 }) // Check PO
         .mockResolvedValueOnce({
@@ -473,7 +473,7 @@ describe('Purchase Order API Integration Tests', () => {
         ],
       };
 
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 })
         .mockResolvedValueOnce({
@@ -490,7 +490,7 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if PO not in receivable status', async () => {
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 });
 
@@ -514,7 +514,7 @@ describe('Purchase Order API Integration Tests', () => {
         status: 'cancelled',
       };
 
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 }) // Check status
         .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE
         // Mock for getPOById
@@ -531,7 +531,7 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if PO already closed', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [{ status: 'closed' }], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'closed' }], rowCount: 1 });
 
       const response = await request(app)
         .post('/api/v1/purchase-orders/po-123/cancel')
@@ -551,7 +551,7 @@ describe('Purchase Order API Integration Tests', () => {
         status: 'closed',
       };
 
-      mockClient.query
+      (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ status: 'received' }], rowCount: 1 }) // Check status
         .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE
         // Mock for getPOById
@@ -568,7 +568,7 @@ describe('Purchase Order API Integration Tests', () => {
 
     // TODO: Fix timeout issue
     it.skip('should return 400 if PO not fully received', async () => {
-      mockClient.query.mockResolvedValueOnce({ rows: [{ status: 'partially_received' }], rowCount: 1 });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'partially_received' }], rowCount: 1 });
 
       const response = await request(app)
         .post('/api/v1/purchase-orders/po-123/close')
