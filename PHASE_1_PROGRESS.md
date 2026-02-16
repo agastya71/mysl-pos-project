@@ -10,61 +10,61 @@
 
 ### 1️⃣ ISSUE-003: Hardcoded JWT Secrets (1 hour) - [#26](https://github.com/agastya71/mysl-pos-project/issues/26)
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete (Commit: db0f244)
 
-- [ ] Create `backend/src/config/env.ts` with requireEnv/optionalEnv functions
-- [ ] Update `backend/src/middleware/auth.middleware.ts` (line 6) - remove fallback
-- [ ] Update `backend/src/services/auth.service.ts` (lines 36-37) - remove fallbacks
-- [ ] Update `backend/.env` with proper JWT secrets
-- [ ] Update `backend/.env.example` with comments
-- [ ] Update `backend/src/__tests__/setup.ts` (JWT_ACCESS_SECRET)
-- [ ] Run tests: `cd backend && npm test`
-- [ ] Manual test: Remove JWT_ACCESS_SECRET and verify startup fails
+- [x] Create `backend/src/config/env.ts` with requireEnv/optionalEnv functions
+- [x] Update `backend/src/middleware/auth.middleware.ts` (line 6) - remove fallback
+- [x] Update `backend/src/services/auth.service.ts` (lines 36-37) - remove fallbacks
+- [x] Update `backend/.env` with proper JWT secrets
+- [x] Update `backend/.env.example` with comments
+- [x] Update `backend/src/__tests__/setup.ts` (JWT_ACCESS_SECRET)
+- [x] Run tests: `cd backend && npm test`
+- [x] Manual test: Remove JWT_ACCESS_SECRET and verify startup fails
 
 **Files Modified:**
-- [ ] backend/src/config/env.ts (NEW)
-- [ ] backend/src/middleware/auth.middleware.ts
-- [ ] backend/src/services/auth.service.ts
-- [ ] backend/.env
-- [ ] backend/.env.example
-- [ ] backend/src/__tests__/setup.ts
+- [x] backend/src/config/env.ts (NEW)
+- [x] backend/src/middleware/auth.middleware.ts
+- [x] backend/src/services/auth.service.ts
+- [x] backend/.env
+- [x] backend/.env.example
+- [x] backend/src/__tests__/setup.ts
 
 ---
 
 ### 2️⃣ ISSUE-009: Hardcoded Admin Password (1 hour) - [#32](https://github.com/agastya71/mysl-pos-project/issues/32)
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete (Commit: cffc15b)
 
-- [ ] Update `backend/src/database/seed.ts` (line 33) - read from env
-- [ ] Add password length validation (min 8 characters)
-- [ ] Update `backend/.env` with ADMIN_INITIAL_PASSWORD
-- [ ] Update `backend/.env.example`
-- [ ] Manual test: Run seed with/without password
-- [ ] Verify warning when password missing
+- [x] Update `backend/src/database/seed.ts` (line 33) - read from env
+- [x] Add password length validation (min 8 characters)
+- [x] Update `backend/.env` with ADMIN_INITIAL_PASSWORD
+- [x] Update `backend/.env.example`
+- [x] Manual test: Run seed with/without password
+- [x] Verify warning when password missing
 
 **Files Modified:**
-- [ ] backend/src/database/seed.ts
-- [ ] backend/.env
-- [ ] backend/.env.example
+- [x] backend/src/database/seed.ts
+- [x] backend/.env
+- [x] backend/.env.example
 
 ---
 
 ### 3️⃣ ISSUE-006: CORS All Origins (1 hour) - [#29](https://github.com/agastya71/mysl-pos-project/issues/29)
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete (Commit: 388f1c4)
 
-- [ ] Update `backend/src/app.ts` (line 13) - configure CORS properly
-- [ ] Add origin validation callback
-- [ ] Set `credentials: true`
-- [ ] Update `backend/.env` with ALLOWED_ORIGINS
-- [ ] Update `backend/.env.example`
-- [ ] Manual test: Verify localhost:3001 works
-- [ ] Manual test: Verify other origins blocked
+- [x] Update `backend/src/app.ts` (line 13) - configure CORS properly
+- [x] Add origin validation callback
+- [x] Set `credentials: true`
+- [x] Update `backend/.env` with ALLOWED_ORIGINS
+- [x] Update `backend/.env.example`
+- [x] Manual test: Verify localhost:3001 works
+- [x] Manual test: Verify other origins blocked
 
 **Files Modified:**
-- [ ] backend/src/app.ts
-- [ ] backend/.env
-- [ ] backend/.env.example
+- [x] backend/src/app.ts
+- [x] backend/.env
+- [x] backend/.env.example
 
 ---
 
@@ -182,13 +182,13 @@
 
 | Issue | Status | Time Spent | Estimated | Remaining |
 |-------|--------|------------|-----------|-----------|
-| ISSUE-003 | ⬜ | 0h | 1h | 1h |
-| ISSUE-009 | ⬜ | 0h | 1h | 1h |
-| ISSUE-006 | ⬜ | 0h | 1h | 1h |
+| ISSUE-003 | ✅ | 1h | 1h | 0h |
+| ISSUE-009 | ✅ | 1h | 1h | 0h |
+| ISSUE-006 | ✅ | 1h | 1h | 0h |
 | ISSUE-007 | ⬜ | 0h | 2h | 2h |
 | ISSUE-001 | ⬜ | 0h | 4-6h | 4-6h |
 | ISSUE-002 | ⬜ | 0h | 6-8h | 6-8h |
-| **TOTAL** | **0%** | **0h** | **15-19h** | **15-19h** |
+| **TOTAL** | **~20%** | **3h** | **15-19h** | **12-16h** |
 
 ---
 
