@@ -25,12 +25,20 @@ import {
   TransactionItem,
   TransactionWithDetails,
   CreateTransactionRequest,
+  CreatePaymentRequest,
   TransactionListQuery,
   TransactionListResponse,
   ProductSnapshot,
   VoidTransactionRequest,
+  CashPaymentResult,
+  CardPaymentResult,
+  GiftCardPaymentResult,
+  CheckPaymentResult,
+  StoreCreditPaymentResult,
 } from '../types/transaction.types';
 import { Product } from '../types/product.types';
+import { GiftCardService } from './gift-card.service';
+import { PaymentProcessorService } from './payment-processor.service';
 import logger from '../utils/logger';
 
 /**
@@ -741,6 +749,184 @@ export class TransactionService {
       tax_amount: Math.round(tax_amount * 100) / 100,
       line_total: Math.round(line_total * 100) / 100,
     };
+  }
+
+  /**
+   * PHASE 3: Payment Processor Methods
+   * Individual methods for processing different payment types
+   */
+
+  /**
+   * Process cash payment with change calculation
+   */
+  async processCashPayment(paymentRequest: CreatePaymentRequest): Promise<CashPaymentResult> {
+    const { amount, payment_details } = paymentRequest;
+
+    if (!payment_details?.cash_received) {
+      throw new AppError(400, 'INVALID_PAYMENT', 'Cash received amount is required');
+    }
+
+    const cash_received = payment_details.cash_received;
+
+    if (cash_received < amount) {
+      throw new AppError(
+        400,
+        'INSUFFICIENT_CASH',
+        `Insufficient cash received. Required: $${amount.toFixed(2)}, Received: $${cash_received.toFixed(2)}`
+      );
+    }
+
+    const cash_change = cash_received - amount;
+
+    return {
+      success: true,
+      cash_received,
+      cash_change: Math.round(cash_change * 100) / 100,
+    };
+  }
+
+  /**
+   * Process card payment via payment processor
+   */
+  async processCardPayment(paymentRequest: CreatePaymentRequest): Promise<CardPaymentResult> {
+    const { amount, payment_details } = paymentRequest;
+
+    if (!payment_details?.card_token) {
+      throw new AppError(400, 'INVALID_PAYMENT', 'Card token is required for card payments');
+    }
+
+    const paymentProcessorService = new PaymentProcessorService();
+
+    try {
+      const authResponse = await paymentProcessorService.authorizePayment({
+        amount,
+        cardToken: payment_details.card_token,
+        idempotencyKey: `txn_${Date.now()}_${Math.random()}`,
+      });
+
+      if (!authResponse.success) {
+        throw new AppError(400, 'CARD_DECLINED', `Card payment declined: ${authResponse.message || 'Unknown error'}`);
+      }
+
+      return {
+        success: true,
+        authorization_id: authResponse.authorizationId!,
+        authorization_code: authResponse.authorizationCode!,
+        card_last_four: authResponse.cardLast4!,
+        card_brand: authResponse.cardBrand!,
+        processor_name: 'mock', // Will be dynamic in production
+      };
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError(500, 'CARD_PROCESSING_ERROR', 'Card payment processing failed');
+    }
+  }
+
+  /**
+   * Process gift card payment with balance validation
+   */
+  async processGiftCardPayment(paymentRequest: CreatePaymentRequest): Promise<GiftCardPaymentResult> {
+    const { amount, payment_details } = paymentRequest;
+
+    if (!payment_details?.gift_card_number) {
+      throw new AppError(400, 'INVALID_PAYMENT', 'Gift card number is required');
+    }
+
+    const giftCardService = new GiftCardService();
+
+    try {
+      const redemptionResult = await giftCardService.validateRedemption(
+        payment_details.gift_card_number,
+        amount
+      );
+
+      return {
+        success: true,
+        gift_card_id: redemptionResult.gift_card.id,
+        gift_card_number: payment_details.gift_card_number,
+        previous_balance: redemptionResult.previous_balance,
+        new_balance: redemptionResult.new_balance,
+      };
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError(500, 'GIFT_CARD_ERROR', 'Gift card processing failed');
+    }
+  }
+
+  /**
+   * Process check payment with validation
+   */
+  async processCheckPayment(paymentRequest: CreatePaymentRequest): Promise<CheckPaymentResult> {
+    const { payment_details } = paymentRequest;
+
+    if (!payment_details?.check_number || payment_details.check_number.trim() === '') {
+      throw new AppError(400, 'INVALID_PAYMENT', 'Check number is required');
+    }
+
+    return {
+      success: true,
+      check_number: payment_details.check_number,
+    };
+  }
+
+  /**
+   * Process store credit payment with balance validation
+   */
+  async processStoreCreditPayment(paymentRequest: CreatePaymentRequest): Promise<StoreCreditPaymentResult> {
+    const { amount, payment_details } = paymentRequest;
+
+    if (!payment_details?.store_credit_account_id) {
+      throw new AppError(400, 'INVALID_PAYMENT', 'Store credit account ID is required');
+    }
+
+    // Check store credit account balance
+    const accountResult = await pool.query(
+      'SELECT id, customer_id, balance FROM store_credit_accounts WHERE id = $1',
+      [payment_details.store_credit_account_id]
+    );
+
+    if (accountResult.rowCount === 0) {
+      throw new AppError(404, 'ACCOUNT_NOT_FOUND', 'Store credit account not found');
+    }
+
+    const account = accountResult.rows[0];
+
+    if (account.balance < amount) {
+      throw new AppError(
+        400,
+        'INSUFFICIENT_BALANCE',
+        `Insufficient store credit balance. Available: $${account.balance.toFixed(2)}, Required: $${amount.toFixed(2)}`
+      );
+    }
+
+    const new_balance = account.balance - amount;
+
+    return {
+      success: true,
+      store_credit_account_id: account.id,
+      previous_balance: account.balance,
+      new_balance,
+    };
+  }
+
+  /**
+   * Validate payments match transaction total
+   */
+  validatePayments(payments: CreatePaymentRequest[], totalAmount: number): void {
+    const paymentSum = payments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Allow $0.01 tolerance for rounding
+    if (Math.abs(paymentSum - totalAmount) > 0.01) {
+      throw new AppError(
+        400,
+        'PAYMENT_MISMATCH',
+        `Payment sum ($${paymentSum.toFixed(2)}) does not match transaction total ($${totalAmount.toFixed(2)})`
+      );
+    }
   }
 }
 
