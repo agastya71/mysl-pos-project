@@ -36,10 +36,10 @@ describe('Purchase Order API Integration Tests', () => {
     // Mock authentication middleware
     (authenticateToken as jest.Mock).mockImplementation((req, _res, next) => {
       req.user = {
-        userId: 'user-123',
+        userId: '550e8400-e29b-41d4-a716-446655440200',
         username: 'testuser',
         role: 'admin',
-        terminalId: 'terminal-123',
+        terminalId: '550e8400-e29b-41d4-a716-446655440201',
       };
       next();
     });
@@ -84,13 +84,17 @@ describe('Purchase Order API Integration Tests', () => {
 
   describe('POST /api/v1/purchase-orders', () => {
     it('should create PO with valid data', async () => {
+      const vendorId = '550e8400-e29b-41d4-a716-446655440300';
+      const productId = '550e8400-e29b-41d4-a716-446655440301';
+      const poId = '550e8400-e29b-41d4-a716-446655440302';
+
       const requestBody = {
-        vendor_id: 'vendor-123',
-        order_type: 'purchase',
-        expected_delivery_date: '2026-02-15',
+        vendor_id: vendorId,
+        order_type: 'purchase' as const,
+        expected_delivery_date: '2026-02-15T00:00:00.000Z',
         items: [
           {
-            product_id: 'product-123',
+            product_id: productId,
             quantity_ordered: 100,
             unit_cost: 10.0,
             tax_amount: 10.0,
@@ -100,23 +104,23 @@ describe('Purchase Order API Integration Tests', () => {
       };
 
       const mockPO = {
-        id: 'po-123',
+        id: poId,
         po_number: 'PO-20260208-0001',
-        vendor_id: 'vendor-123',
+        vendor_id: vendorId,
         vendor_name: 'Test Vendor',
         status: 'draft',
-        items: [{ id: 'item-123', product_id: 'product-123' }],
+        items: [{ id: 'item-123', product_id: productId }],
       };
 
-      // Mock for createPO service
-      (pool.query as jest.Mock)
+      // Mock for createPO service (uses client.query - transactions)
+      mockClient.query
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
-        .mockResolvedValueOnce({ rows: [{ id: 'vendor-123' }], rowCount: 1 }) // Vendor check
-        .mockResolvedValueOnce({ rows: [{ id: 'product-123' }], rowCount: 1 }) // Products check
+        .mockResolvedValueOnce({ rows: [{ id: vendorId }], rowCount: 1 }) // Vendor check
+        .mockResolvedValueOnce({ rows: [{ id: productId }], rowCount: 1 }) // Products check
         .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 }) // Insert PO
         .mockResolvedValueOnce({ rows: [{ id: 'item-123' }], rowCount: 1 }) // Insert item
         .mockResolvedValueOnce({ rowCount: 0 }) // COMMIT
-        // Mock for getPOById call
+        // Mock for getPOById call (also uses client.query)
         .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 })
         .mockResolvedValueOnce({ rows: mockPO.items, rowCount: 1 });
 
@@ -195,18 +199,20 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should filter by vendor_id', async () => {
+      const vendorId = '550e8400-e29b-41d4-a716-446655440310';
+
       (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ total: '5' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
-        .get('/api/v1/purchase-orders?vendor_id=vendor-123')
+        .get(`/api/v1/purchase-orders?vendor_id=${vendorId}`)
         .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(pool.query).toHaveBeenCalledWith(
         expect.stringContaining('po.vendor_id = $'),
-        expect.arrayContaining(['vendor-123'])
+        expect.arrayContaining([vendorId])
       );
     });
 
@@ -237,19 +243,20 @@ describe('Purchase Order API Integration Tests', () => {
 
   describe('GET /api/v1/purchase-orders/:id', () => {
     it('should return PO by ID', async () => {
+      const poId = '550e8400-e29b-41d4-a716-446655440320';
       const mockPO = {
-        id: 'po-123',
+        id: poId,
         po_number: 'PO-20260208-0001',
         vendor_name: 'Test Vendor',
         status: 'draft',
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 }) // PO query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // Items query
 
       const response = await request(app)
-        .get('/api/v1/purchase-orders/po-123')
+        .get(`/api/v1/purchase-orders/${poId}`)
         .expect(200);
 
       expect(response.body.success).toBe(true);
@@ -257,10 +264,11 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 404 for non-existent PO', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      const nonExistentId = '550e8400-e29b-41d4-a716-446655440999';
+      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
-        .get('/api/v1/purchase-orders/non-existent')
+        .get(`/api/v1/purchase-orders/${nonExistentId}`)
         .expect(404);
 
       expect(response.body.success).toBe(false);
@@ -269,18 +277,19 @@ describe('Purchase Order API Integration Tests', () => {
 
   describe('PUT /api/v1/purchase-orders/:id', () => {
     it('should update draft PO', async () => {
+      const poId = '550e8400-e29b-41d4-a716-446655440330';
       const requestBody = {
-        expected_delivery_date: '2026-03-01',
+        expected_delivery_date: '2026-03-01T00:00:00.000Z',
         notes: 'Updated notes',
       };
 
       const mockPO = {
-        id: 'po-123',
+        id: poId,
         status: 'draft',
         notes: 'Updated notes',
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 }) // Check PO
         .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 }) // Update PO
@@ -291,7 +300,7 @@ describe('Purchase Order API Integration Tests', () => {
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
-        .put('/api/v1/purchase-orders/po-123')
+        .put(`/api/v1/purchase-orders/${poId}`)
         .send(requestBody)
         .expect(200);
 
@@ -300,12 +309,14 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 when updating non-draft PO', async () => {
-      (pool.query as jest.Mock)
+      const poId = '550e8400-e29b-41d4-a716-446655440331';
+
+      mockClient.query
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 });
 
       const response = await request(app)
-        .put('/api/v1/purchase-orders/po-123')
+        .put(`/api/v1/purchase-orders/${poId}`)
         .send({ notes: 'Cannot update' })
         .expect(400);
 
@@ -315,33 +326,39 @@ describe('Purchase Order API Integration Tests', () => {
 
   describe('DELETE /api/v1/purchase-orders/:id', () => {
     it('should delete draft PO', async () => {
-      (pool.query as jest.Mock)
+      const poId = '550e8400-e29b-41d4-a716-446655440340';
+
+      mockClient.query
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 })
         .mockResolvedValueOnce({ rowCount: 1 });
 
       const response = await request(app)
-        .delete('/api/v1/purchase-orders/po-123')
+        .delete(`/api/v1/purchase-orders/${poId}`)
         .expect(200);
 
       expect(response.body.success).toBe(true);
     });
 
     it('should return 400 when deleting non-draft PO', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 });
+      const poId = '550e8400-e29b-41d4-a716-446655440341';
+
+      mockClient.query.mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 });
 
       const response = await request(app)
-        .delete('/api/v1/purchase-orders/po-123')
+        .delete(`/api/v1/purchase-orders/${poId}`)
         .expect(400);
 
       expect(response.body.success).toBe(false);
     });
 
     it('should return 404 for non-existent PO', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      const nonExistentId = '550e8400-e29b-41d4-a716-446655440998';
+
+      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
-        .delete('/api/v1/purchase-orders/non-existent')
-        .expect(404);
+        .delete(`/api/v1/purchase-orders/${nonExistentId}`)
+        .expect(400);
 
       expect(response.body.success).toBe(false);
     });
@@ -349,12 +366,13 @@ describe('Purchase Order API Integration Tests', () => {
 
   describe('POST /api/v1/purchase-orders/:id/submit', () => {
     it('should submit draft PO', async () => {
+      const poId = '550e8400-e29b-41d4-a716-446655440350';
       const mockPO = {
-        id: 'po-123',
+        id: poId,
         status: 'submitted',
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 }) // Check status
         .mockResolvedValueOnce({ rows: [{ count: '3' }], rowCount: 1 }) // Count items
         .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE
@@ -363,7 +381,7 @@ describe('Purchase Order API Integration Tests', () => {
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/submit')
+        .post(`/api/v1/purchase-orders/${poId}/submit`)
         .expect(200);
 
       expect(response.body.success).toBe(true);
@@ -371,22 +389,26 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if PO has no items', async () => {
-      (pool.query as jest.Mock)
+      const poId = '550e8400-e29b-41d4-a716-446655440351';
+
+      mockClient.query
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/submit')
+        .post(`/api/v1/purchase-orders/${poId}/submit`)
         .expect(400);
 
       expect(response.body.success).toBe(false);
     });
 
     it('should return 400 if PO not in draft status', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'submitted' }], rowCount: 1 });
+      const poId = '550e8400-e29b-41d4-a716-446655440352';
+
+      mockClient.query.mockResolvedValueOnce({ rows: [{ status: 'submitted' }], rowCount: 1 });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/submit')
+        .post(`/api/v1/purchase-orders/${poId}/submit`)
         .expect(400);
 
       expect(response.body.success).toBe(false);
@@ -395,12 +417,13 @@ describe('Purchase Order API Integration Tests', () => {
 
   describe('POST /api/v1/purchase-orders/:id/approve', () => {
     it('should approve submitted PO', async () => {
+      const poId = '550e8400-e29b-41d4-a716-446655440360';
       const mockPO = {
-        id: 'po-123',
+        id: poId,
         status: 'approved',
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [{ status: 'submitted' }], rowCount: 1 }) // Check status
         .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE
         // Mock for getPOById
@@ -408,7 +431,7 @@ describe('Purchase Order API Integration Tests', () => {
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/approve')
+        .post(`/api/v1/purchase-orders/${poId}/approve`)
         .expect(200);
 
       expect(response.body.success).toBe(true);
@@ -416,10 +439,12 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if PO not in submitted status', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 });
+      const poId = '550e8400-e29b-41d4-a716-446655440361';
+
+      mockClient.query.mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/approve')
+        .post(`/api/v1/purchase-orders/${poId}/approve`)
         .expect(400);
 
       expect(response.body.success).toBe(false);
@@ -428,25 +453,28 @@ describe('Purchase Order API Integration Tests', () => {
 
   describe('POST /api/v1/purchase-orders/:id/receive', () => {
     it('should receive items successfully', async () => {
+      const poId = '550e8400-e29b-41d4-a716-446655440370';
+      const itemId = '550e8400-e29b-41d4-a716-446655440371';
+
       const requestBody = {
         items: [
           {
-            item_id: 'item-123',
+            item_id: itemId,
             quantity_received: 50,
           },
         ],
       };
 
       const mockPO = {
-        id: 'po-123',
+        id: poId,
         status: 'partially_received',
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 }) // Check PO
         .mockResolvedValueOnce({
-          rows: [{ id: 'item-123', quantity_ordered: 100, quantity_received: 0 }],
+          rows: [{ id: itemId, quantity_ordered: 100, quantity_received: 0 }],
           rowCount: 1,
         }) // Check item
         .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE item
@@ -456,7 +484,7 @@ describe('Purchase Order API Integration Tests', () => {
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/receive')
+        .post(`/api/v1/purchase-orders/${poId}/receive`)
         .send(requestBody)
         .expect(200);
 
@@ -464,25 +492,28 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if receiving more than ordered', async () => {
+      const poId = '550e8400-e29b-41d4-a716-446655440372';
+      const itemId = '550e8400-e29b-41d4-a716-446655440373';
+
       const requestBody = {
         items: [
           {
-            item_id: 'item-123',
+            item_id: itemId,
             quantity_received: 150, // More than ordered
           },
         ],
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'approved' }], rowCount: 1 })
         .mockResolvedValueOnce({
-          rows: [{ id: 'item-123', quantity_ordered: 100, quantity_received: 0 }],
+          rows: [{ id: itemId, quantity_ordered: 100, quantity_received: 0 }],
           rowCount: 1,
         });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/receive')
+        .post(`/api/v1/purchase-orders/${poId}/receive`)
         .send(requestBody)
         .expect(400);
 
@@ -490,13 +521,15 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if PO not in receivable status', async () => {
-      (pool.query as jest.Mock)
+      const poId = '550e8400-e29b-41d4-a716-446655440374';
+
+      mockClient.query
         .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/receive')
-        .send({ items: [{ item_id: 'item-123', quantity_received: 50 }] })
+        .post(`/api/v1/purchase-orders/${poId}/receive`)
+        .send({ items: [{ item_id: '550e8400-e29b-41d4-a716-446655440375', quantity_received: 50 }] })
         .expect(400);
 
       expect(response.body.success).toBe(false);
@@ -505,16 +538,17 @@ describe('Purchase Order API Integration Tests', () => {
 
   describe('POST /api/v1/purchase-orders/:id/cancel', () => {
     it('should cancel PO with reason', async () => {
+      const poId = '550e8400-e29b-41d4-a716-446655440380';
       const requestBody = {
         reason: 'Vendor unavailable',
       };
 
       const mockPO = {
-        id: 'po-123',
+        id: poId,
         status: 'cancelled',
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [{ status: 'draft' }], rowCount: 1 }) // Check status
         .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE
         // Mock for getPOById
@@ -522,7 +556,7 @@ describe('Purchase Order API Integration Tests', () => {
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/cancel')
+        .post(`/api/v1/purchase-orders/${poId}/cancel`)
         .send(requestBody)
         .expect(200);
 
@@ -531,10 +565,12 @@ describe('Purchase Order API Integration Tests', () => {
     });
 
     it('should return 400 if PO already closed', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'closed' }], rowCount: 1 });
+      const poId = '550e8400-e29b-41d4-a716-446655440381';
+
+      mockClient.query.mockResolvedValueOnce({ rows: [{ status: 'closed' }], rowCount: 1 });
 
       const response = await request(app)
-        .post('/api/v1/purchase-orders/po-123/cancel')
+        .post(`/api/v1/purchase-orders/${poId}/cancel`)
         .send({ reason: 'Test' })
         .expect(400);
 
