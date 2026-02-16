@@ -70,23 +70,24 @@
 
 ### 4️⃣ ISSUE-007: No Rate Limiting (2 hours) - [#30](https://github.com/agastya71/mysl-pos-project/issues/30)
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete (Commit: 7bb1ed5)
 
-- [ ] Install: `npm install express-rate-limit`
-- [ ] Create `backend/src/middleware/rateLimit.middleware.ts`
-- [ ] Implement apiLimiter (100 req/15min)
-- [ ] Implement loginLimiter (5 req/15min)
-- [ ] Implement refreshLimiter (30 req/15min)
-- [ ] Update `backend/src/app.ts` - add limiters
-- [ ] Update `backend/.env.example` with rate limit configs
-- [ ] Run tests: `cd backend && npm test`
-- [ ] Manual test: Hit login 6 times, verify 429 on 6th
+- [x] Install: `npm install express-rate-limit`
+- [x] Create `backend/src/middleware/rateLimit.middleware.ts`
+- [x] Implement apiLimiter (100 req/15min)
+- [x] Implement loginLimiter (5 req/15min)
+- [x] Implement refreshLimiter (30 req/15min)
+- [x] Update `backend/src/app.ts` - add limiters
+- [x] Update `backend/.env.example` with rate limit configs
+- [x] Run tests: `cd backend && npm test`
+- [ ] Manual test: Hit login 6 times, verify 429 on 6th (optional)
 
 **Files Modified:**
-- [ ] backend/package.json (add dependency)
-- [ ] backend/src/middleware/rateLimit.middleware.ts (NEW)
-- [ ] backend/src/app.ts
-- [ ] backend/.env.example
+- [x] backend/package.json (add dependency)
+- [x] backend/src/middleware/rateLimit.middleware.ts (NEW)
+- [x] backend/src/app.ts
+- [x] backend/src/routes/auth.routes.ts
+- [x] backend/.env.example
 
 ---
 
@@ -185,10 +186,10 @@
 | ISSUE-003 | ✅ | 1h | 1h | 0h |
 | ISSUE-009 | ✅ | 1h | 1h | 0h |
 | ISSUE-006 | ✅ | 1h | 1h | 0h |
-| ISSUE-007 | ⬜ | 0h | 2h | 2h |
+| ISSUE-007 | ✅ | 2h | 2h | 0h |
 | ISSUE-001 | ⬜ | 0h | 4-6h | 4-6h |
 | ISSUE-002 | ⬜ | 0h | 6-8h | 6-8h |
-| **TOTAL** | **~20%** | **3h** | **15-19h** | **12-16h** |
+| **TOTAL** | **~30%** | **5h** | **15-19h** | **10-14h** |
 
 ---
 
