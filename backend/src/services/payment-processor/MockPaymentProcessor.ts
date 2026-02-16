@@ -58,6 +58,9 @@ export class MockPaymentProcessor implements IPaymentProcessor {
       authorizationCode: authCode,
       status: 'authorized',
       message: 'Payment authorized successfully',
+      cardBrand: this.getCardBrandFromToken(params.cardToken),
+      cardLast4: this.getCardLast4FromToken(params.cardToken),
+      amount: params.amount,
       processorResponse: {
         authorizationId: authId,
         authorizationCode: authCode,

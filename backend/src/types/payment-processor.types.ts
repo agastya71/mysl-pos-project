@@ -24,6 +24,7 @@ export interface AuthorizePaymentParams {
   amount: number;
   cardToken: string;
   currency?: string;
+  idempotencyKey?: string; // Phase 3 - for duplicate prevention
   metadata?: Record<string, any>;
 }
 
@@ -33,6 +34,9 @@ export interface AuthorizationResponse {
   authorizationCode?: string;
   status: 'authorized' | 'declined' | 'error';
   message?: string;
+  cardLast4?: string; // Last 4 digits of card (Phase 3)
+  cardBrand?: string; // visa, mastercard, amex, discover (Phase 3)
+  amount?: number; // Authorized amount (Phase 3)
   processorResponse: any;
 }
 

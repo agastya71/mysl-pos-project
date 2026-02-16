@@ -8,7 +8,7 @@ import {
   PaymentResult,
 } from '../types/payment-processor.types';
 import { MockPaymentProcessor } from './payment-processor/MockPaymentProcessor';
-import { AppError } from '../utils/errors';
+import { AppError } from '../middleware/error.middleware';
 
 export class PaymentProcessorService {
   private processors: Map<string, IPaymentProcessor>;
@@ -41,13 +41,31 @@ export class PaymentProcessorService {
 
     if (!processor) {
       throw new AppError(
+        400,
         'PROCESSOR_NOT_FOUND',
-        `Payment processor "${processorName}" not found or not configured`,
-        400
+        `Payment processor "${processorName}" not found or not configured`
       );
     }
 
     return processor;
+  }
+
+  /**
+   * Authorize payment (Phase 3 - for split payments)
+   */
+  async authorizePayment(params: {
+    amount: number;
+    cardToken: string;
+    idempotencyKey?: string;
+    processorName?: string;
+  }) {
+    const processor = this.getProcessor(params.processorName);
+    return await processor.authorizePayment({
+      amount: params.amount,
+      cardToken: params.cardToken,
+      currency: 'USD',
+      idempotencyKey: params.idempotencyKey,
+    });
   }
 
   /**
