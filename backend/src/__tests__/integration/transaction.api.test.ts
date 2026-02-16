@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import transactionRoutes from '../../routes/transaction.routes';
-import { authenticateToken } from '../../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../../middleware/auth.middleware';
 import { pool } from '../../config/database';
 
 // Mock dependencies
@@ -25,6 +25,10 @@ describe('Transaction API Integration Tests', () => {
         role: 'cashier',
         terminalId: 'terminal-123',
       };
+      next();
+    });
+
+    (requirePermission as jest.Mock).mockImplementation(() => (_req: any, _res: any, next: any) => {
       next();
     });
 

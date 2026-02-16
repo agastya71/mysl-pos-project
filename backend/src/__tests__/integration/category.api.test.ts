@@ -7,7 +7,7 @@
 import request from 'supertest';
 import express from 'express';
 import categoryRoutes from '../../routes/category.routes';
-import { authenticateToken } from '../../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../../middleware/auth.middleware';
 import { pool } from '../../config/database';
 
 jest.mock('../../config/database');
@@ -31,6 +31,10 @@ describe('Category API Integration Tests', () => {
         role: 'admin',
         terminalId: 'terminal-123',
       };
+      next();
+    });
+
+    (requirePermission as jest.Mock).mockImplementation(() => (_req: any, _res: any, next: any) => {
       next();
     });
 
