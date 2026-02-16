@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import customerRoutes from '../../routes/customer.routes';
-import { authenticateToken } from '../../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../../middleware/auth.middleware';
 import { pool } from '../../config/database';
 
 jest.mock('../../config/database');
@@ -16,8 +16,12 @@ describe('Customer API Integration Tests', () => {
     app = express();
     app.use(express.json());
 
-    (authenticateToken as jest.Mock) = jest.fn((req, _res, next) => {
+    (authenticateToken as jest.Mock).mockImplementation((req, _res, next) => {
       req.user = { userId: 'user-123', username: 'testuser', role: 'cashier' };
+      next();
+    });
+
+    (requirePermission as jest.Mock).mockImplementation(() => (_req: any, _res: any, next: any) => {
       next();
     });
 
@@ -40,7 +44,7 @@ describe('Customer API Integration Tests', () => {
       release: jest.fn(),
     };
 
-    (pool.connect as jest.Mock) = jest.fn().mockResolvedValue(mockClient);
+    (pool.connect as jest.Mock).mockResolvedValue(mockClient);
   });
 
   afterEach(() => {

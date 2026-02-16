@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import transactionRoutes from '../../routes/transaction.routes';
-import { authenticateToken } from '../../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../../middleware/auth.middleware';
 import { pool } from '../../config/database';
 
 // Mock dependencies
@@ -18,13 +18,17 @@ describe('Transaction API Integration Tests', () => {
     app.use(express.json());
 
     // Mock authentication middleware
-    (authenticateToken as jest.Mock) = jest.fn((req, _res, next) => {
+    (authenticateToken as jest.Mock).mockImplementation((req, _res, next) => {
       req.user = {
         userId: 'user-123',
         username: 'testuser',
         role: 'cashier',
         terminalId: 'terminal-123',
       };
+      next();
+    });
+
+    (requirePermission as jest.Mock).mockImplementation(() => (_req: any, _res: any, next: any) => {
       next();
     });
 
@@ -48,7 +52,7 @@ describe('Transaction API Integration Tests', () => {
       release: jest.fn(),
     };
 
-    (pool.connect as jest.Mock) = jest.fn().mockResolvedValue(mockClient);
+    (pool.connect as jest.Mock).mockResolvedValue(mockClient);
   });
 
   afterEach(() => {

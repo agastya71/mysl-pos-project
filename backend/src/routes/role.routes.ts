@@ -41,7 +41,7 @@
 
 import { Router } from 'express';
 import { RoleController } from '../controllers/role.controller';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../middleware/auth.middleware';
 
 const router = Router();
 const roleController = new RoleController();
@@ -91,7 +91,7 @@ router.use(authenticateToken);
  *     "description": "Supervise cashiers and handle voids/refunds"
  *   }'
  */
-router.post('/', (req, res, next) => {
+router.post('/', requirePermission('roles', 'create'), (req, res, next) => {
   roleController.createRole(req, res).catch(next);
 });
 
@@ -136,7 +136,7 @@ router.post('/', (req, res, next) => {
  * curl -X GET http://localhost:3000/api/v1/roles \
  *   -H "Authorization: Bearer <JWT_TOKEN>"
  */
-router.get('/', (req, res, next) => {
+router.get('/', requirePermission('roles', 'read'), (req, res, next) => {
   roleController.getRoles(req, res).catch(next);
 });
 
@@ -191,8 +191,8 @@ router.get('/', (req, res, next) => {
  * curl -X GET http://localhost:3000/api/v1/roles/2 \
  *   -H "Authorization: Bearer <JWT_TOKEN>"
  */
-router.get('/:id', (req, res, next) => {
-  roleController.getRoleById(req, res).catch(next);
+router.get('/:id', requirePermission('roles', 'read'), (req, res, next) => {
+  (roleController.getRoleById as any)(req, res).catch(next);
 });
 
 /**
@@ -245,8 +245,8 @@ router.get('/:id', (req, res, next) => {
  *     "is_active": true
  *   }'
  */
-router.put('/:id', (req, res, next) => {
-  roleController.updateRole(req, res).catch(next);
+router.put('/:id', requirePermission('roles', 'update'), (req, res, next) => {
+  (roleController.updateRole as any)(req, res).catch(next);
 });
 
 /**
@@ -288,8 +288,8 @@ router.put('/:id', (req, res, next) => {
  *     "permission_id": 5
  *   }'
  */
-router.post('/:id/permissions', (req, res, next) => {
-  roleController.assignPermission(req, res).catch(next);
+router.post('/:id/permissions', requirePermission('roles', 'update'), (req, res, next) => {
+  (roleController.assignPermission as any)(req, res).catch(next);
 });
 
 /**
@@ -322,8 +322,8 @@ router.post('/:id/permissions', (req, res, next) => {
  * curl -X DELETE http://localhost:3000/api/v1/roles/2/permissions/5 \
  *   -H "Authorization: Bearer <JWT_TOKEN>"
  */
-router.delete('/:id/permissions/:permissionId', (req, res, next) => {
-  roleController.revokePermission(req, res).catch(next);
+router.delete('/:id/permissions/:permissionId', requirePermission('roles', 'update'), (req, res, next) => {
+  (roleController.revokePermission as any)(req, res).catch(next);
 });
 
 /**
@@ -368,7 +368,7 @@ router.delete('/:id/permissions/:permissionId', (req, res, next) => {
  * curl -X GET http://localhost:3000/api/v1/roles/permissions/all \
  *   -H "Authorization: Bearer <JWT_TOKEN>"
  */
-router.get('/permissions/all', (req, res, next) => {
+router.get('/permissions/all', requirePermission('permissions', 'read'), (req, res, next) => {
   roleController.getPermissions(req, res).catch(next);
 });
 

@@ -7,7 +7,7 @@
 import request from 'supertest';
 import express from 'express';
 import categoryRoutes from '../../routes/category.routes';
-import { authenticateToken } from '../../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../../middleware/auth.middleware';
 import { pool } from '../../config/database';
 
 jest.mock('../../config/database');
@@ -24,13 +24,17 @@ describe('Category API Integration Tests', () => {
     app.use(express.json());
 
     // Mock authentication middleware
-    (authenticateToken as jest.Mock) = jest.fn((req, _res, next) => {
+    (authenticateToken as jest.Mock).mockImplementation((req, _res, next) => {
       req.user = {
         userId: 'user-123',
         username: 'testuser',
         role: 'admin',
         terminalId: 'terminal-123',
       };
+      next();
+    });
+
+    (requirePermission as jest.Mock).mockImplementation(() => (_req: any, _res: any, next: any) => {
       next();
     });
 
@@ -52,16 +56,13 @@ describe('Category API Integration Tests', () => {
   });
 
   beforeEach(() => {
-    // Reset all mocks before each test
-    jest.clearAllMocks();
-
     mockClient = {
       query: jest.fn(),
       release: jest.fn(),
     };
 
-    (pool.connect as jest.Mock) = jest.fn().mockResolvedValue(mockClient);
-    (pool.query as jest.Mock) = jest.fn();
+    (pool.connect as jest.Mock).mockResolvedValue(mockClient);
+    (pool.query as jest.Mock).mockResolvedValue({ rows: [], rowCount: 0 });
   });
 
   afterEach(() => {

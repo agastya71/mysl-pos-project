@@ -31,12 +31,7 @@ import redisClient from '../config/redis';
 import { AppError } from '../middleware/error.middleware';
 import { AuthTokens, JwtPayload, User, LoginResponse } from '../types/api.types';
 import logger from '../utils/logger';
-
-// JWT configuration from environment variables with development defaults
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev_access_secret';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret';
-const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '15m';
-const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
+import { env } from '../config/env';
 
 /**
  * Authentication Service
@@ -203,7 +198,7 @@ export class AuthService {
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
     try {
       // Verify JWT signature and extract payload (throws if invalid or expired)
-      const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as JwtPayload;
+      const payload = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as JwtPayload;
 
       // Check if token exists in Redis (not revoked)
       const isValid = await this.validateRefreshToken(payload.userId, refreshToken);
@@ -314,13 +309,13 @@ export class AuthService {
    */
   private async generateTokens(payload: JwtPayload): Promise<AuthTokens> {
     // Generate short-lived access token (for API authentication)
-    const accessToken = jwt.sign(payload, JWT_ACCESS_SECRET, {
-      expiresIn: JWT_ACCESS_EXPIRY,
+    const accessToken = jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+      expiresIn: env.JWT_ACCESS_EXPIRY,
     } as any);
 
     // Generate long-lived refresh token (for obtaining new access tokens)
-    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
-      expiresIn: JWT_REFRESH_EXPIRY,
+    const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+      expiresIn: env.JWT_REFRESH_EXPIRY,
     } as any);
 
     return { accessToken, refreshToken };

@@ -61,7 +61,7 @@
  */
 
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../middleware/auth.middleware';
 import * as vendorController from '../controllers/vendor.controller';
 
 const router = Router();
@@ -129,7 +129,7 @@ router.use(authenticateToken);
  *
  * @see vendorController.getVendors for implementation
  */
-router.get('/', vendorController.getVendors);
+router.get('/', requirePermission('vendors', 'read'), vendorController.getVendors);
 
 /**
  * Get vendor by ID
@@ -164,7 +164,7 @@ router.get('/', vendorController.getVendors);
  *
  * @see vendorController.getVendorById for implementation
  */
-router.get('/:id', vendorController.getVendorById);
+router.get('/:id', requirePermission('vendors', 'read'), vendorController.getVendorById);
 
 /**
  * Create new vendor
@@ -226,7 +226,7 @@ router.get('/:id', vendorController.getVendorById);
  * @see vendorController.createVendor for implementation
  * @see CreateVendorSchema in controller for validation rules
  */
-router.post('/', vendorController.createVendor);
+router.post('/', requirePermission('vendors', 'create'), vendorController.createVendor);
 
 /**
  * Update vendor
@@ -294,7 +294,7 @@ router.post('/', vendorController.createVendor);
  * @see vendorController.updateVendor for implementation
  * @see UpdateVendorSchema in controller for validation rules
  */
-router.put('/:id', vendorController.updateVendor);
+router.put('/:id', requirePermission('vendors', 'update'), vendorController.updateVendor);
 
 /**
  * Delete vendor (soft delete)
@@ -350,6 +350,6 @@ router.put('/:id', vendorController.updateVendor);
  *
  * @see vendorController.deleteVendor for implementation
  */
-router.delete('/:id', vendorController.deleteVendor);
+router.delete('/:id', requirePermission('vendors', 'delete'), vendorController.deleteVendor);
 
 export default router;

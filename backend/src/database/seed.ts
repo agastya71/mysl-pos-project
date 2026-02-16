@@ -29,24 +29,39 @@ export const seedDatabase = async (): Promise<void> => {
     const terminalId = terminalResult.rows[0].id;
     logger.info(`Created terminal: ${terminalId}`);
 
-    // Create admin user
-    const hashedPassword = await bcrypt.hash('admin123', SALT_ROUNDS);
-    const userResult = await client.query(`
-      INSERT INTO users (
-        username,
-        email,
-        password_hash,
-        first_name,
-        last_name,
-        role,
-        is_active,
-        assigned_terminal_id
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id
-    `, ['admin', 'admin@pos-system.local', hashedPassword, 'System', 'Administrator', 'admin', true, terminalId]);
-    const userId = userResult.rows[0].id;
-    logger.info(`Created admin user: ${userId}`);
+    // Create admin user (only if password provided via environment)
+    const adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
+    let userId: string | null = null;
+
+    if (!adminPassword) {
+      logger.warn(
+        'ADMIN_INITIAL_PASSWORD not set. Skipping admin user creation. ' +
+        'Set ADMIN_INITIAL_PASSWORD environment variable to create the initial admin user.'
+      );
+    } else {
+      // Validate password length
+      if (adminPassword.length < 8) {
+        throw new Error('ADMIN_INITIAL_PASSWORD must be at least 8 characters');
+      }
+
+      const hashedPassword = await bcrypt.hash(adminPassword, SALT_ROUNDS);
+      const userResult = await client.query(`
+        INSERT INTO users (
+          username,
+          email,
+          password_hash,
+          first_name,
+          last_name,
+          role,
+          is_active,
+          assigned_terminal_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
+      `, ['admin', 'admin@pos-system.local', hashedPassword, 'System', 'Administrator', 'admin', true, terminalId]);
+      userId = userResult.rows[0].id;
+      logger.info(`Created admin user: ${userId}`);
+    }
 
     // Create sample categories
     const categories = [
@@ -65,19 +80,23 @@ export const seedDatabase = async (): Promise<void> => {
     }
     logger.info(`Created ${categories.length} categories`);
 
-    // Create system settings
-    await client.query(`
-      INSERT INTO system_settings (setting_key, setting_value, description, updated_by)
-      VALUES
-        ($1, $2, $3, $4),
-        ($5, $6, $7, $8),
-        ($9, $10, $11, $12)
-    `, [
-      'organization_name', 'Non-Profit Organization', 'Organization name for receipts', userId,
-      'tax_rate', '0.00', 'Sales tax rate (percentage)', userId,
-      'currency', 'USD', 'Default currency', userId,
-    ]);
-    logger.info('Created system settings');
+    // Create system settings (requires admin user)
+    if (userId) {
+      await client.query(`
+        INSERT INTO system_settings (setting_key, setting_value, description, updated_by)
+        VALUES
+          ($1, $2, $3, $4),
+          ($5, $6, $7, $8),
+          ($9, $10, $11, $12)
+      `, [
+        'organization_name', 'Non-Profit Organization', 'Organization name for receipts', userId,
+        'tax_rate', '0.00', 'Sales tax rate (percentage)', userId,
+        'currency', 'USD', 'Default currency', userId,
+      ]);
+      logger.info('Created system settings');
+    } else {
+      logger.warn('Skipping system settings creation (no admin user created)');
+    }
 
     await client.query('COMMIT');
     logger.info('Database seeding completed successfully');

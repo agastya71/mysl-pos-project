@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import employeeRoutes from '../../routes/employee.routes';
-import { authenticateToken } from '../../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../../middleware/auth.middleware';
 import { pool } from '../../config/database';
 
 jest.mock('../../config/database');
@@ -16,8 +16,12 @@ describe('Employee API Integration Tests', () => {
     app = express();
     app.use(express.json());
 
-    (authenticateToken as jest.Mock) = jest.fn((req, _res, next) => {
+    (authenticateToken as jest.Mock).mockImplementation((req, _res, next) => {
       req.user = { userId: 'user-123', username: 'admin', role: 'admin' };
+      next();
+    });
+
+    (requirePermission as jest.Mock).mockImplementation(() => (_req: any, _res: any, next: any) => {
       next();
     });
 
@@ -35,12 +39,9 @@ describe('Employee API Integration Tests', () => {
   });
 
   beforeEach(() => {
-    mockQuery = jest.fn();
-    (pool.query as jest.Mock) = mockQuery;
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
+    mockQuery = jest.fn();
+    (pool.query as jest.Mock).mockImplementation(mockQuery);
   });
 
   describe('POST /api/v1/employees', () => {

@@ -38,7 +38,7 @@
 
 import { Router } from 'express';
 import { EmployeeController } from '../controllers/employee.controller';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../middleware/auth.middleware';
 
 const router = Router();
 const employeeController = new EmployeeController();
@@ -107,7 +107,7 @@ router.use(authenticateToken);
  *     "assigned_terminal_id": "550e8400-e29b-41d4-a716-446655440000"
  *   }'
  */
-router.post('/', (req, res, next) => {
+router.post('/', requirePermission('employees', 'create'), (req, res, next) => {
   employeeController.createEmployee(req, res).catch(next);
 });
 
@@ -163,7 +163,7 @@ router.post('/', (req, res, next) => {
  * curl -X GET "http://localhost:3000/api/v1/employees?role_id=2&is_active=true&search=john&page=1&limit=10" \
  *   -H "Authorization: Bearer <JWT_TOKEN>"
  */
-router.get('/', (req, res, next) => {
+router.get('/', requirePermission('employees', 'read'), (req, res, next) => {
   employeeController.getEmployees(req, res).catch(next);
 });
 
@@ -208,8 +208,8 @@ router.get('/', (req, res, next) => {
  * curl -X GET http://localhost:3000/api/v1/employees/1 \
  *   -H "Authorization: Bearer <JWT_TOKEN>"
  */
-router.get('/:id', (req, res, next) => {
-  employeeController.getEmployeeById(req, res).catch(next);
+router.get('/:id', requirePermission('employees', 'read'), (req, res, next) => {
+  (employeeController.getEmployeeById as any)(req, res).catch(next);
 });
 
 /**
@@ -275,8 +275,8 @@ router.get('/:id', (req, res, next) => {
  *     "assigned_terminal_id": "550e8400-e29b-41d4-a716-446655440000"
  *   }'
  */
-router.put('/:id', (req, res, next) => {
-  employeeController.updateEmployee(req, res).catch(next);
+router.put('/:id', requirePermission('employees', 'update'), (req, res, next) => {
+  (employeeController.updateEmployee as any)(req, res).catch(next);
 });
 
 /**
@@ -325,8 +325,8 @@ router.put('/:id', (req, res, next) => {
  * curl -X DELETE http://localhost:3000/api/v1/employees/1 \
  *   -H "Authorization: Bearer <JWT_TOKEN>"
  */
-router.delete('/:id', (req, res, next) => {
-  employeeController.deactivateEmployee(req, res).catch(next);
+router.delete('/:id', requirePermission('employees', 'delete'), (req, res, next) => {
+  (employeeController.deactivateEmployee as any)(req, res).catch(next);
 });
 
 export default router;
