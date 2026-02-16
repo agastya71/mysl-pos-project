@@ -47,7 +47,7 @@ export interface UpdateGiftCardParams {
   recipient_name?: string;
   recipient_email?: string;
   recipient_phone?: string;
-  expires_at?: Date;
+  expires_at?: Date | string;
   is_active?: boolean;
 }
 

@@ -10,6 +10,7 @@ import vendorRoutes from './vendor.routes';
 import purchaseOrderRoutes from './purchaseOrder.routes';
 import employeeRoutes from './employee.routes';
 import roleRoutes from './role.routes';
+import giftCardRoutes from './gift-card.routes';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/vendors', vendorRoutes);
 router.use('/purchase-orders', purchaseOrderRoutes);
 router.use('/employees', employeeRoutes);
 router.use('/roles', roleRoutes);
+router.use('/gift-cards', giftCardRoutes);
 
 export default router;
