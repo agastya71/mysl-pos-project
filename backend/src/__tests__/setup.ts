@@ -3,8 +3,8 @@
 
 // Set test environment variables
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-secret-key-for-testing-only';
-process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-key';
+process.env.JWT_ACCESS_SECRET = 'test-access-secret-key-for-testing-only';
+process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-key-for-testing-only';
 
 // Mock console methods to reduce noise in test output (optional)
 // Uncomment if you want to suppress console output during tests

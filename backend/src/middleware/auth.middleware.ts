@@ -2,8 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { AppError } from './error.middleware';
 import { JwtPayload } from '../types/api.types';
-
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev_access_secret';
+import { env } from '../config/env';
 
 export const authenticateToken = (req: Request, _res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -14,7 +13,7 @@ export const authenticateToken = (req: Request, _res: Response, next: NextFuncti
   }
 
   try {
-    const payload = jwt.verify(token, JWT_ACCESS_SECRET) as JwtPayload;
+    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtPayload;
     req.user = payload;
     next();
   } catch (error) {
