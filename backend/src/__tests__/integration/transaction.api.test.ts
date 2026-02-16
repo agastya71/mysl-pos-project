@@ -85,7 +85,7 @@ describe('Transaction API Integration Tests', () => {
       };
 
       // Mock successful transaction creation
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [{ terminal_number: 'T001' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [{ transaction_number: 'T001-000001' }] })
@@ -153,7 +153,7 @@ describe('Transaction API Integration Tests', () => {
         status: 'completed',
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [mockTransaction], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [{ id: 'item-1', product_id: 'prod-1', quantity: 2 }] })
         .mockResolvedValueOnce({ rows: [{ id: 'payment-1', method: 'cash', amount: 25.00 }] });
@@ -168,7 +168,7 @@ describe('Transaction API Integration Tests', () => {
     });
 
     it('should return 404 if transaction not found', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      mockClient.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
         .get('/api/v1/transactions/invalid-id')
@@ -185,7 +185,7 @@ describe('Transaction API Integration Tests', () => {
         { id: 'txn-2', transaction_number: 'T001-000002', total_amount: 15.50, status: 'completed' },
       ];
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [{ count: '10' }] })
         .mockResolvedValueOnce({ rows: mockTransactions });
 
@@ -200,7 +200,7 @@ describe('Transaction API Integration Tests', () => {
     });
 
     it('should filter transactions by status', async () => {
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [{ count: '2' }] })
         .mockResolvedValueOnce({ rows: [{ id: 'txn-1', status: 'voided' }] });
 
@@ -214,7 +214,7 @@ describe('Transaction API Integration Tests', () => {
     });
 
     it('should filter transactions by date range', async () => {
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [{ count: '5' }] })
         .mockResolvedValueOnce({ rows: [] });
 
@@ -235,7 +235,7 @@ describe('Transaction API Integration Tests', () => {
         status: 'completed',
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [mockTransaction], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [{ ...mockTransaction, status: 'voided' }], rowCount: 1 })
@@ -265,7 +265,7 @@ describe('Transaction API Integration Tests', () => {
         status: 'voided',
       };
 
-      (pool.query as jest.Mock)
+      mockClient.query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
         .mockResolvedValueOnce({ rows: [mockTransaction], rowCount: 1 });
 

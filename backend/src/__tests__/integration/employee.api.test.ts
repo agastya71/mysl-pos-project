@@ -67,6 +67,9 @@ describe('Employee API Integration Tests', () => {
         updated_at: '2026-02-14T10:00:00Z',
       };
 
+      // Mock getEmployeeByEmail check (returns empty - no duplicate)
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      // Mock createEmployee insert
       mockQuery.mockResolvedValueOnce({ rows: [mockEmployee], rowCount: 1 });
 
       const response = await request(app)
@@ -245,17 +248,25 @@ describe('Employee API Integration Tests', () => {
         phone: '555-9999',
       };
 
-      const mockUpdatedEmployee = {
+      const mockExistingEmployee = {
         id: 1,
         employee_number: 'EMP-000001',
-        first_name: 'John Updated',
+        first_name: 'John',
         last_name: 'Doe',
         email: 'john@example.com',
-        phone: '555-9999',
+        phone: '555-1234',
         role_id: 2,
         is_active: true,
       };
 
+      const mockUpdatedEmployee = {
+        ...mockExistingEmployee,
+        ...updateData,
+      };
+
+      // Mock getEmployeeById check
+      mockQuery.mockResolvedValueOnce({ rows: [mockExistingEmployee], rowCount: 1 });
+      // Mock updateEmployee
       mockQuery.mockResolvedValueOnce({ rows: [mockUpdatedEmployee], rowCount: 1 });
 
       const response = await request(app)

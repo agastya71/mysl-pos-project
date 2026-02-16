@@ -216,11 +216,24 @@ describe('Customer API Integration Tests', () => {
         email: 'jane.updated@example.com',
       };
 
-      const mockUpdatedCustomer = {
+      const mockExistingCustomer = {
         id: 'customer-123',
+        customer_number: 'CUST-000001',
+        first_name: 'John',
+        last_name: 'Doe',
+        email: 'john@example.com',
+      };
+
+      const mockUpdatedCustomer = {
+        ...mockExistingCustomer,
         ...updates,
       };
 
+      // Mock getCustomerById check
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockExistingCustomer], rowCount: 1 });
+      // Mock duplicate email check (returns empty)
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      // Mock update query
       (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockUpdatedCustomer], rowCount: 1 });
 
       const response = await request(app)
