@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { requestLogger } from './middleware/logger.middleware';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
+import { apiLimiter } from './middleware/rateLimit.middleware';
 import routes from './routes';
 import healthRoutes from './routes/health.routes';
 
@@ -33,6 +34,9 @@ export const createApp = (): Application => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(requestLogger);
+
+  // Rate limiting - applied to all API routes
+  app.use('/api/v1', apiLimiter);
 
   app.use('/health', healthRoutes);
   app.use('/api/v1', routes);
