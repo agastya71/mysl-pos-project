@@ -275,13 +275,24 @@ router.post('/products', async (req, res) => {
 
 ## Testing Standards
 
+### Test-Driven Development (TDD) — Mandatory
+
+**All new code must follow the Red-Green-Refactor cycle:**
+1. **Red** — Write a failing test that describes the desired behavior
+2. **Green** — Write the minimum implementation to make the test pass
+3. **Refactor** — Clean up the code while keeping tests green
+
+This applies to every new feature, bug fix, and API endpoint. Do not write implementation code before a failing test exists.
+
 ### Unit Tests
+- Write the test first, then the implementation
 - Test individual functions in isolation
 - Mock external dependencies
-- Aim for 80%+ code coverage
+- Maintain 80%+ code coverage
 - Use descriptive test names: `should return error when price is negative`
 
 ### Integration Tests
+- Write integration tests before implementing API endpoints
 - Test API endpoints end-to-end
 - Test database operations
 - Use test database (not production!)
@@ -312,6 +323,26 @@ describe('ProductService', () => {
 ```
 
 ## Git Conventions
+
+### Worktrees and Feature Branches — Mandatory
+
+**Every change to tracked files must be made in a git worktree on a feature branch. Never modify tracked files directly on `main`.**
+
+Workflow:
+```bash
+# 1. Create a worktree + branch for your task
+git worktree add ../pos-<branch-name> -b <branch-name>
+cd ../pos-<branch-name>
+
+# 2. Do all work and commits in the worktree
+
+# 3. When done, open a PR and merge via the normal review process
+
+# 4. Remove the worktree after the branch is merged
+git worktree remove ../pos-<branch-name>
+```
+
+One worktree per task. Do not reuse a worktree for unrelated work.
 
 ### Branch Naming
 - `feature/feature-name` - New features
@@ -375,13 +406,6 @@ import { formatPrice } from '@/utils/formatting';
 
 import styles from './ProductList.module.css';
 ```
-
-### File Naming
-- React components: `ProductCard.tsx`
-- Services: `products.service.ts`
-- Types: `product.types.ts`
-- Utils: `formatting.ts`
-- Tests: `products.test.ts` or `products.spec.ts`
 
 ## Documentation
 
@@ -456,6 +480,7 @@ function calculateFinalPrice(
 
 Before submitting PR, verify:
 - [ ] Code follows style guide
+- [ ] Tests were written before implementation (TDD)
 - [ ] Tests are included and passing
 - [ ] Documentation is updated
 - [ ] No console.logs or debugger statements

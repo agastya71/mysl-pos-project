@@ -475,6 +475,8 @@ REACT_APP_VERSION=1.0.0
 - Cross-browser testing (Chromium, Firefox)
 - Hardware integration (printers, scanners)
 
+---
+<!-- Sections below (Common Patterns, Important Reminders, Resources) removed — covered by .claude/rules.md -->
 ## Common Patterns
 
 ### Service Layer Pattern
