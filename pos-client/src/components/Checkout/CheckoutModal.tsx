@@ -22,6 +22,8 @@ import {
 import { clearSearchResults, fetchProducts } from '../../store/slices/products.slice';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import CashPaymentInput from './CashPaymentInput';
+import CardPaymentInput from './CardPaymentInput';
+import CheckPaymentInput from './CheckPaymentInput';
 import PaymentList from './PaymentList';
 import CustomerSelector from '../Customer/CustomerSelector';
 import { CustomerSearchResult } from '../../types/customer.types';
@@ -133,6 +135,35 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
         payment_details: {
           cash_received: cashReceived,
           cash_change: cashReceived - amount,
+        },
+      })
+    );
+  };
+
+  const handleAddCardPayment = (
+    cardLastFour: string,
+    cardType: string,
+    amount: number
+  ) => {
+    dispatch(
+      addPayment({
+        payment_method: selectedMethod as 'credit_card' | 'debit_card',
+        amount,
+        payment_details: {
+          card_last_four: cardLastFour,
+          card_type: cardType,
+        },
+      })
+    );
+  };
+
+  const handleAddCheckPayment = (checkNumber: string, amount: number) => {
+    dispatch(
+      addPayment({
+        payment_method: 'check',
+        amount,
+        payment_details: {
+          check_number: checkNumber,
         },
       })
     );
@@ -291,6 +322,19 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose }) => {
 
               {selectedMethod === 'cash' && (
                 <CashPaymentInput amount={checkout.amountDue} onPaymentAdded={handleAddCashPayment} />
+              )}
+              {(selectedMethod === 'credit_card' || selectedMethod === 'debit_card') && (
+                <CardPaymentInput
+                  amount={checkout.amountDue}
+                  paymentMethod={selectedMethod}
+                  onPaymentAdded={handleAddCardPayment}
+                />
+              )}
+              {selectedMethod === 'check' && (
+                <CheckPaymentInput
+                  amount={checkout.amountDue}
+                  onPaymentAdded={handleAddCheckPayment}
+                />
               )}
             </>
           )}

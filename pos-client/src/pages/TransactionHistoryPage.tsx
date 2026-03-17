@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../store';
@@ -6,7 +6,9 @@ import { fetchTransactions, setPage } from '../store/slices/transactions.slice';
 import FilterBar from '../components/Transaction/FilterBar';
 import TransactionList from '../components/Transaction/TransactionList';
 import TransactionDetailsModal from '../components/Transaction/TransactionDetailsModal';
+import CancelTransactionModal from '../components/Transaction/CancelTransactionModal';
 import Pagination from '../components/common/Pagination';
+import { Transaction } from '../types/transaction.types';
 
 const TransactionHistoryPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -14,6 +16,11 @@ const TransactionHistoryPage: React.FC = () => {
   const { pagination, selectedTransaction } = useSelector(
     (state: RootState) => state.transactions
   );
+  const user = useSelector((state: RootState) => state.auth.user);
+  const [cancelTarget, setCancelTarget] = useState<Transaction | null>(null);
+
+  const canCancelTransactions =
+    user?.role === 'manager' || user?.role === 'admin';
 
   useEffect(() => {
     dispatch(fetchTransactions());
@@ -87,7 +94,10 @@ const TransactionHistoryPage: React.FC = () => {
 
       <div style={styles.container}>
         <FilterBar />
-        <TransactionList />
+        <TransactionList
+          onCancelClick={(txn) => setCancelTarget(txn)}
+          canCancel={canCancelTransactions}
+        />
         {pagination.totalPages > 1 && (
           <Pagination
             currentPage={pagination.page}
@@ -98,6 +108,21 @@ const TransactionHistoryPage: React.FC = () => {
       </div>
 
       {selectedTransaction && <TransactionDetailsModal />}
+
+      {cancelTarget && (
+        <CancelTransactionModal
+          transactionId={cancelTarget.id}
+          transactionNumber={cancelTarget.transaction_number}
+          transactionDate={cancelTarget.transaction_date}
+          totalAmount={Number(cancelTarget.total_amount)}
+          status={cancelTarget.status}
+          onClose={() => setCancelTarget(null)}
+          onSuccess={() => {
+            setCancelTarget(null);
+            dispatch(fetchTransactions());
+          }}
+        />
+      )}
     </div>
   );
 };

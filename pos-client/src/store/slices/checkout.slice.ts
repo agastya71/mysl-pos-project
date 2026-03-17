@@ -60,7 +60,7 @@ import { clearCart } from './cart.slice';
  */
 export interface PaymentInput {
   id: string;
-  payment_method: 'cash' | 'credit_card' | 'debit_card' | 'check';
+  payment_method: 'cash' | 'credit_card' | 'debit_card' | 'check' | 'gift_card';
   amount: number;
   payment_details?: {
     cash_received?: number;

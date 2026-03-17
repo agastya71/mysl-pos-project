@@ -41,6 +41,8 @@ import { GiftCardService } from './gift-card.service';
 import { PaymentProcessorService } from './payment-processor.service';
 import logger from '../utils/logger';
 
+const _paymentProcessorService = new PaymentProcessorService();
+
 /**
  * TransactionService - Handles all transaction-related business logic
  *
@@ -614,6 +616,28 @@ export class TransactionService {
           'INVALID_TRANSACTION_STATUS',
           `Cannot void transaction with status: ${transaction.status}`
         );
+      }
+
+      // Void card payments via processor (best-effort; don't block void on failure)
+      const cardPaymentsResult = await client.query(
+        `SELECT * FROM payments
+         WHERE transaction_id = $1
+           AND payment_method IN ('credit_card', 'debit_card')
+           AND processor_transaction_id IS NOT NULL`,
+        [transaction_id]
+      );
+      for (const cardPayment of cardPaymentsResult.rows) {
+        try {
+          await _paymentProcessorService.voidPayment(
+            cardPayment.processor_transaction_id,
+            cardPayment.payment_processor
+          );
+        } catch (voidErr) {
+          logger.warn('Could not void card payment on processor (continuing)', {
+            paymentId: cardPayment.id,
+            error: (voidErr as Error).message,
+          });
+        }
       }
 
       // Get all transaction items

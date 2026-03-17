@@ -46,6 +46,7 @@
 
 import { Request, Response } from 'express';
 import { TransactionService } from '../services/transaction.service';
+import refundService from '../services/refund.service';
 import { ApiResponse } from '../types/api.types';
 import {
   Transaction,
@@ -197,6 +198,11 @@ const listTransactionsSchema = z.object({
  */
 const voidTransactionSchema = z.object({
   reason: z.string().min(1, 'Void reason is required').max(500),
+});
+
+const refundTransactionSchema = z.object({
+  amount: z.number().min(0.01, 'Refund amount must be greater than 0'),
+  reason: z.string().min(1, 'Refund reason is required').max(500),
 });
 
 /**
@@ -574,6 +580,60 @@ export class TransactionController {
       success: true,
       message: 'Transaction voided successfully',
       data: transaction,
+    });
+  }
+
+  /**
+   * Refund a completed transaction (POST /api/v1/transactions/:id/refund)
+   */
+  async refundTransaction(
+    req: Request<{ id: string }, {}, { amount: number; reason: string }>,
+    res: Response<ApiResponse<any>>
+  ) {
+    const { id } = req.params;
+
+    if (!z.string().uuid().safeParse(id).success) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Invalid transaction ID');
+    }
+
+    const validation = refundTransactionSchema.safeParse(req.body);
+    if (!validation.success) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Invalid request data', validation.error.errors);
+    }
+
+    const user_id = req.user!.userId;
+    const result = await refundService.refundTransaction(
+      id,
+      validation.data.amount,
+      validation.data.reason,
+      user_id
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Transaction refunded successfully',
+      data: result,
+    });
+  }
+
+  /**
+   * Get refund history for a transaction (GET /api/v1/transactions/:id/refunds)
+   */
+  async getRefunds(
+    req: Request<{ id: string }>,
+    res: Response<ApiResponse<any>>
+  ) {
+    const { id } = req.params;
+
+    if (!z.string().uuid().safeParse(id).success) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Invalid transaction ID');
+    }
+
+    const refunds = await refundService.getRefundsForTransaction(id);
+
+    res.status(200).json({
+      success: true,
+      data: refunds,
     });
   }
 }
