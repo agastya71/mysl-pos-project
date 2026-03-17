@@ -253,4 +253,12 @@ export const transactionApi = {
     });
     return response.data.data!;
   },
+
+  refundTransaction: async (id: string, amount: number, reason: string): Promise<any> => {
+    const response = await apiClient.post<ApiResponse<any>>(`/transactions/${id}/refund`, {
+      amount,
+      reason,
+    });
+    return response.data.data!;
+  },
 };

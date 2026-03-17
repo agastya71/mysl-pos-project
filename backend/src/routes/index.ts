@@ -11,6 +11,7 @@ import purchaseOrderRoutes from './purchaseOrder.routes';
 import employeeRoutes from './employee.routes';
 import roleRoutes from './role.routes';
 import giftCardRoutes from './gift-card.routes';
+import reconciliationRoutes from './reconciliation.routes';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/purchase-orders', purchaseOrderRoutes);
 router.use('/employees', employeeRoutes);
 router.use('/roles', roleRoutes);
 router.use('/gift-cards', giftCardRoutes);
+router.use('/reconciliation', reconciliationRoutes);
 
 export default router;

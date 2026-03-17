@@ -23,6 +23,8 @@ import { Transaction } from '../../types/transaction.types';
 interface TransactionRowProps {
   transaction: Transaction;
   onClick: () => void;
+  onCancelClick?: (transaction: Transaction) => void;
+  canCancel?: boolean;
 }
 
 /**
@@ -66,7 +68,12 @@ interface TransactionRowProps {
  * @see {@link TransactionList} - Parent component
  * @see {@link TransactionDetailsModal} - Opened when row clicked
  */
-const TransactionRow: React.FC<TransactionRowProps> = ({ transaction, onClick }) => {
+const TransactionRow: React.FC<TransactionRowProps> = ({
+  transaction,
+  onClick,
+  onCancelClick,
+  canCancel = false,
+}) => {
   /**
    * Format date string to readable format
    * Example: "2024-01-15T14:30:00Z" → "Jan 15, 2024, 02:30 PM"
@@ -156,7 +163,7 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ transaction, onClick })
   const styles = {
     row: {
       display: 'grid',
-      gridTemplateColumns: '2fr 2fr 1.5fr 1fr',
+      gridTemplateColumns: canCancel ? '2fr 2fr 1.5fr 1fr auto' : '2fr 2fr 1.5fr 1fr',
       padding: '16px',
       borderBottom: '1px solid #eee',
       cursor: 'pointer',
@@ -217,6 +224,31 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ transaction, onClick })
         <div style={styles.label}>Status</div>
         <div>{getStatusBadge(transaction.status)}</div>
       </div>
+      {/* Column 5: Action button (manager/admin only, completed transactions) */}
+      {canCancel && onCancelClick && transaction.status === 'completed' && (
+        <div
+          style={{ ...styles.cell, alignItems: 'center' }}
+          onClick={(e) => { e.stopPropagation(); onCancelClick(transaction); }}
+        >
+          <button
+            style={{
+              padding: '4px 12px',
+              backgroundColor: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Refund/Void
+          </button>
+        </div>
+      )}
+      {canCancel && transaction.status !== 'completed' && (
+        <div style={styles.cell} />
+      )}
     </div>
   );
 };

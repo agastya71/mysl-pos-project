@@ -25,4 +25,12 @@ router.put('/:id/void', requirePermission('transactions', 'update'), (req, res, 
   (transactionController.voidTransaction as any)(req, res).catch(next);
 });
 
+router.post('/:id/refund', requirePermission('transactions', 'update'), (req, res, next) => {
+  (transactionController.refundTransaction as any)(req, res).catch(next);
+});
+
+router.get('/:id/refunds', requirePermission('transactions', 'read'), (req, res, next) => {
+  (transactionController.getRefunds as any)(req, res).catch(next);
+});
+
 export default router;

@@ -14,6 +14,7 @@ import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { fetchTransactionById } from '../../store/slices/transactions.slice';
+import { Transaction } from '../../types/transaction.types';
 import TransactionRow from './TransactionRow';
 
 /**
@@ -59,7 +60,12 @@ import TransactionRow from './TransactionRow';
  * @see {@link TransactionDetailsModal} - Details modal (opened on row click)
  * @see {@link FilterBar} - Search/filter controls
  */
-const TransactionList: React.FC = () => {
+interface TransactionListProps {
+  onCancelClick?: (transaction: Transaction) => void;
+  canCancel?: boolean;
+}
+
+const TransactionList: React.FC<TransactionListProps> = ({ onCancelClick, canCancel = false }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { items, isLoading, error } = useSelector((state: RootState) => state.transactions);
 
@@ -153,11 +159,15 @@ const TransactionList: React.FC = () => {
   return (
     <div style={styles.container}>
       {/* Header row with column labels (matches TransactionRow grid) */}
-      <div style={styles.header}>
+      <div style={{
+        ...styles.header,
+        gridTemplateColumns: canCancel ? '2fr 2fr 1.5fr 1fr auto' : '2fr 2fr 1.5fr 1fr',
+      }}>
         <div>Transaction #</div>
         <div>Date</div>
         <div>Total</div>
         <div>Status</div>
+        {canCancel && <div>Action</div>}
       </div>
       {/* Transaction rows (clickable) */}
       {items.map((transaction) => (
@@ -165,6 +175,8 @@ const TransactionList: React.FC = () => {
           key={transaction.id}
           transaction={transaction}
           onClick={() => handleTransactionClick(transaction.id)}
+          onCancelClick={onCancelClick}
+          canCancel={canCancel}
         />
       ))}
     </div>

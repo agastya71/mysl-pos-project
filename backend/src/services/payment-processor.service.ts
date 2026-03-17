@@ -8,6 +8,7 @@ import {
   PaymentResult,
 } from '../types/payment-processor.types';
 import { MockPaymentProcessor } from './payment-processor/MockPaymentProcessor';
+import { SquarePaymentProcessor } from './payment-processor/SquarePaymentProcessor';
 import { AppError } from '../middleware/error.middleware';
 
 export class PaymentProcessorService {
@@ -21,15 +22,10 @@ export class PaymentProcessorService {
     // Initialize Mock processor (always available for testing)
     this.processors.set('mock', new MockPaymentProcessor());
 
-    // TODO: Initialize Square processor when implemented
-    // if (process.env.SQUARE_ACCESS_TOKEN) {
-    //   this.processors.set('square', new SquarePaymentProcessor());
-    // }
-
-    // TODO: Initialize Stripe processor when implemented
-    // if (process.env.STRIPE_SECRET_KEY) {
-    //   this.processors.set('stripe', new StripePaymentProcessor());
-    // }
+    // Initialize Square processor when configured
+    if (process.env.SQUARE_ACCESS_TOKEN && process.env.SQUARE_LOCATION_ID) {
+      this.processors.set('square', new SquarePaymentProcessor());
+    }
   }
 
   /**

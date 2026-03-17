@@ -6,6 +6,7 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { apiLimiter } from './middleware/rateLimit.middleware';
 import routes from './routes';
 import healthRoutes from './routes/health.routes';
+import webhookRoutes from './routes/webhook.routes';
 
 export const createApp = (): Application => {
   const app = express();
@@ -14,6 +15,14 @@ export const createApp = (): Application => {
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
     : ['http://localhost:3001'];
+
+  // Square webhook must receive raw body for HMAC signature verification.
+  // Register BEFORE express.json() so the body isn't parsed yet.
+  app.use(
+    '/api/v1/webhooks/square',
+    express.raw({ type: 'application/json' }),
+    webhookRoutes
+  );
 
   app.use(helmet());
   app.use(cors({
