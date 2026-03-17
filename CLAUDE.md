@@ -8,16 +8,18 @@ A full-stack Point of Sale (POS) system for non-profit organizations (thrift sto
 
 ## Worktree Workflow (mandatory)
 
-**Never edit tracked files directly on `main`.** Every task requires a git worktree on a feature branch:
+**Never edit tracked files directly on `main`.** Every task requires a git worktree on a feature branch. Full workflow in `.claude/rules.md`, but the key steps are:
 
 ```bash
 git worktree add ../pos-<branch-name> -b <branch-name>
 cd ../pos-<branch-name>
+git config --local user.name "agastya71"
+git config --local user.email "agastya71@gmail.com"
 # ... do all work here, then PR and merge ...
 git worktree remove ../pos-<branch-name>   # after branch is merged
 ```
 
-Branch naming: `feature/`, `fix/`, `refactor/`, `docs/`, `test/` prefixes. Full convention in `.claude/rules.md`.
+Branch naming: `feature/`, `fix/`, `refactor/`, `docs/`, `test/` prefixes.
 
 ## Commands
 
@@ -49,8 +51,6 @@ npm run test:coverage # Coverage report
 ### POS Client — Electron (`cd pos-client`)
 ```bash
 npm run dev           # Webpack + Electron concurrently
-npm run dev:webpack   # Webpack dev server only
-npm run dev:electron  # Electron with hot reload
 npm run build         # Production build
 npm run build:mac     # macOS installer
 npm run build:win     # Windows installer

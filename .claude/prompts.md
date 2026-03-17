@@ -7,7 +7,7 @@ Building a **POS system for non-profit organizations** (thrift stores, donation 
 ## Pre-Task Checklist
 
 Before coding, confirm:
-1. Read relevant docs (`docs/ARCHITECTURE.md`, `docs/architecture/API_ENDPOINTS.md`, `docs/architecture/DATA_MODEL.md`)
+1. Read relevant docs (`docs/architecture/API_ENDPOINTS.md`, `docs/architecture/DATA_MODEL_TABLES.md`, `docs/architecture/SECURITY_DEPLOYMENT.md`)
 2. Checked for existing similar functionality to reuse
 3. Identified files to modify (controllers, services, models, tests)
 4. Considered security implications (input validation, parameterized queries, error handling)
@@ -15,8 +15,8 @@ Before coding, confirm:
 ## Task-Specific Steps
 
 ### New API Endpoint
-1. Define TypeScript types/interfaces
-2. Write failing tests (TDD)
+1. Write failing tests (TDD)
+2. Define TypeScript types/interfaces
 3. Create Zod validator schema
 4. Implement service layer logic
 5. Create controller method
