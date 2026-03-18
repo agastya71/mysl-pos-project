@@ -2,16 +2,22 @@
  * CardPaymentInput Component
  *
  * Handles credit and debit card payments via Square Terminal API.
- * Card data is NEVER entered manually here — Square handles card capture
- * on the physical terminal. We collect the Square nonce/token that the
- * terminal returns after the customer taps/dips/swipes.
+ * Card data is NEVER entered manually — Square handles card capture on the
+ * physical terminal device.
  *
- * In the MVP flow the cashier clicks "Charge Card", the terminal prompts
- * the customer, and when approved the terminal returns a payment token.
- * For the sandbox we simulate this with a test nonce.
+ * Flow:
+ *   1. Cashier clicks "Charge Card"
+ *   2. POST /api/v1/payments/terminal/checkout → get checkoutId
+ *   3. Show "Waiting for customer on terminal…" spinner
+ *   4. Poll GET /api/v1/payments/terminal/checkout/:id every 2 seconds
+ *   5. COMPLETED → call onPaymentAdded with card details, stop polling
+ *   6. CANCELED   → show error, allow retry
+ *   7. Timeout after 120 s → cancel checkout, show timeout error
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { apiClient } from '../../services/api/api.client';
 
 interface CardPaymentInputProps {
   amount: number;
@@ -19,7 +25,10 @@ interface CardPaymentInputProps {
   onPaymentAdded: (cardLastFour: string, cardType: string, amount: number) => void;
 }
 
-type CardStatus = 'idle' | 'pending' | 'approved' | 'declined';
+type CardStatus = 'idle' | 'pending' | 'approved' | 'declined' | 'timeout';
+
+const POLL_INTERVAL_MS = 2000;
+const TIMEOUT_MS = 120_000;
 
 const CardPaymentInput: React.FC<CardPaymentInputProps> = ({
   amount,
@@ -28,36 +37,109 @@ const CardPaymentInput: React.FC<CardPaymentInputProps> = ({
 }) => {
   const [status, setStatus] = useState<CardStatus>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  // In production the terminal pushes back last-four and brand.
-  // For the sandbox we let the cashier enter them manually so the
-  // transaction record has real-looking data.
-  const [cardLastFour, setCardLastFour] = useState('');
-  const [cardType, setCardType] = useState('Visa');
+  const [checkoutId, setCheckoutId] = useState<string | null>(null);
+
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const methodLabel = paymentMethod === 'credit_card' ? 'Credit Card' : 'Debit Card';
 
+  const stopPolling = () => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    pollIntervalRef.current = null;
+    timeoutRef.current = null;
+  };
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => stopPolling();
+  }, []);
+
   const handleCharge = async () => {
     setErrorMsg('');
-
-    if (cardLastFour.length !== 4 || !/^\d{4}$/.test(cardLastFour)) {
-      setErrorMsg('Enter the last 4 digits of the card.');
-      return;
-    }
-
     setStatus('pending');
 
-    // Simulate terminal round-trip (replace with real Square Terminal SDK call)
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    const idempotencyKey = uuidv4();
 
-    // Simulate approval (always succeeds in sandbox)
-    setStatus('approved');
-    onPaymentAdded(cardLastFour, cardType, amount);
+    try {
+      const createRes = await apiClient.post('/payments/terminal/checkout', {
+        amount,
+        idempotencyKey,
+      });
+      const id: string = createRes.data.data.checkoutId;
+      setCheckoutId(id);
+      startPolling(id);
+    } catch (err: any) {
+      setStatus('declined');
+      setErrorMsg(
+        err?.response?.data?.error?.message ?? 'Could not reach the terminal. Please try again.'
+      );
+    }
+  };
+
+  const startPolling = (id: string) => {
+    // Timeout: auto-cancel after 120 s
+    timeoutRef.current = setTimeout(async () => {
+      stopPolling();
+      try {
+        await apiClient.post(`/payments/terminal/checkout/${id}/cancel`);
+      } catch {
+        // best-effort cancel
+      }
+      setStatus('timeout');
+      setErrorMsg('Payment timed out. Please ask the customer to try again.');
+    }, TIMEOUT_MS);
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await apiClient.get(`/payments/terminal/checkout/${id}`);
+        const { status: checkoutStatus, paymentId, cardLast4, cardBrand } =
+          res.data.data as {
+            status: string;
+            paymentId?: string;
+            cardLast4?: string;
+            cardBrand?: string;
+          };
+
+        if (checkoutStatus === 'COMPLETED') {
+          stopPolling();
+          setStatus('approved');
+          onPaymentAdded(cardLast4 ?? '****', cardBrand ?? 'Card', amount);
+          return;
+        }
+
+        if (checkoutStatus === 'CANCELED' || checkoutStatus === 'CANCEL_REQUESTED') {
+          stopPolling();
+          setStatus('declined');
+          setErrorMsg('Payment was cancelled on the terminal. Please try again.');
+          return;
+        }
+
+        // PENDING / IN_PROGRESS — keep polling
+      } catch {
+        // Network hiccup — keep polling until timeout
+      }
+    }, POLL_INTERVAL_MS);
+  };
+
+  const handleCancel = async () => {
+    stopPolling();
+    if (checkoutId) {
+      try {
+        await apiClient.post(`/payments/terminal/checkout/${checkoutId}/cancel`);
+      } catch {
+        // best-effort
+      }
+    }
+    handleReset();
   };
 
   const handleReset = () => {
+    stopPolling();
     setStatus('idle');
     setErrorMsg('');
-    setCardLastFour('');
+    setCheckoutId(null);
   };
 
   return (
@@ -71,34 +153,7 @@ const CardPaymentInput: React.FC<CardPaymentInputProps> = ({
 
       {status === 'idle' && (
         <>
-          <div style={styles.field}>
-            <label style={styles.label}>Card Type:</label>
-            <select
-              value={cardType}
-              onChange={(e) => setCardType(e.target.value)}
-              style={styles.select}
-            >
-              <option>Visa</option>
-              <option>Mastercard</option>
-              <option>Amex</option>
-              <option>Discover</option>
-            </select>
-          </div>
-
-          <div style={styles.field}>
-            <label style={styles.label}>Last 4 Digits:</label>
-            <input
-              type="text"
-              value={cardLastFour}
-              onChange={(e) => setCardLastFour(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="1234"
-              maxLength={4}
-              style={styles.input}
-            />
-          </div>
-
           {errorMsg && <p style={styles.error}>{errorMsg}</p>}
-
           <button onClick={handleCharge} style={styles.chargeButton}>
             Charge {methodLabel}
           </button>
@@ -108,8 +163,13 @@ const CardPaymentInput: React.FC<CardPaymentInputProps> = ({
       {status === 'pending' && (
         <div style={styles.statusBox}>
           <div style={styles.spinner}>⏳</div>
-          <p style={styles.statusText}>Processing on terminal…</p>
-          <p style={styles.statusHint}>Customer is completing payment on the card reader.</p>
+          <p style={styles.statusText}>Waiting for customer on terminal…</p>
+          <p style={styles.statusHint}>
+            The customer is completing payment on the card reader.
+          </p>
+          <button onClick={handleCancel} style={styles.cancelButton}>
+            Cancel
+          </button>
         </div>
       )}
 
@@ -117,16 +177,16 @@ const CardPaymentInput: React.FC<CardPaymentInputProps> = ({
         <div style={{ ...styles.statusBox, ...styles.approvedBox }}>
           <div style={styles.checkmark}>✓</div>
           <p style={{ ...styles.statusText, color: '#28a745' }}>Approved</p>
-          <p style={styles.statusHint}>
-            {cardType} ending in {cardLastFour} — ${Number(amount).toFixed(2)}
-          </p>
+          <p style={styles.statusHint}>${Number(amount).toFixed(2)}</p>
         </div>
       )}
 
-      {status === 'declined' && (
+      {(status === 'declined' || status === 'timeout') && (
         <div style={{ ...styles.statusBox, ...styles.declinedBox }}>
-          <p style={{ ...styles.statusText, color: '#dc3545' }}>Declined</p>
-          <p style={styles.statusHint}>Ask customer for another payment method.</p>
+          <p style={{ ...styles.statusText, color: '#dc3545' }}>
+            {status === 'timeout' ? 'Timed Out' : 'Declined'}
+          </p>
+          <p style={styles.statusHint}>{errorMsg || 'Ask customer for another payment method.'}</p>
           <button onClick={handleReset} style={styles.retryButton}>
             Try Again
           </button>
@@ -164,21 +224,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: '#007bff',
   },
-  select: {
-    padding: '0.4rem 0.5rem',
-    fontSize: '0.9rem',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    width: '150px',
-  },
-  input: {
-    padding: '0.5rem',
-    fontSize: '1rem',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    width: '150px',
-    textAlign: 'right',
-  },
   error: {
     color: '#dc3545',
     fontSize: '0.8rem',
@@ -190,6 +235,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '1rem',
     fontWeight: 600,
     backgroundColor: '#007bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  cancelButton: {
+    marginTop: '1rem',
+    padding: '0.5rem 1.5rem',
+    fontSize: '0.875rem',
+    backgroundColor: '#6c757d',
     color: 'white',
     border: 'none',
     borderRadius: '4px',

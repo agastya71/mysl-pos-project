@@ -389,4 +389,59 @@ describe('TransactionService', () => {
       expect(result.transactions).toHaveLength(1);
     });
   });
+
+  describe('getSummary', () => {
+    const summaryRow = {
+      today: '120.00',
+      today_count: 3,
+      this_week: '540.00',
+      this_week_count: 12,
+      this_month: '2100.00',
+      this_month_count: 47,
+    };
+    const breakdownRows = [
+      { payment_method: 'cash', total_amount: '1400.00', count: 30 },
+      { payment_method: 'credit_card', total_amount: '700.00', count: 17 },
+    ];
+    const topProductRows = [
+      { product_name: 'Widget A', category_name: 'Electronics', quantity_sold: 10, total_revenue: '500.00' },
+    ];
+
+    it('should return { summary, payment_breakdown, top_products }', async () => {
+      (pool.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [summaryRow] })
+        .mockResolvedValueOnce({ rows: breakdownRows })
+        .mockResolvedValueOnce({ rows: topProductRows });
+
+      const result = await transactionService.getSummary();
+
+      expect(result.summary).toEqual(summaryRow);
+      expect(result.payment_breakdown).toEqual(breakdownRows);
+      expect(result.top_products).toEqual(topProductRows);
+    });
+
+    it('should run all three queries', async () => {
+      (pool.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [summaryRow] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await transactionService.getSummary();
+
+      expect(pool.query).toHaveBeenCalledTimes(3);
+    });
+
+    it('should return empty summary row when no completed transactions', async () => {
+      (pool.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [] })   // no rows
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const result = await transactionService.getSummary();
+
+      expect(result.summary).toEqual({});
+      expect(result.payment_breakdown).toEqual([]);
+      expect(result.top_products).toEqual([]);
+    });
+  });
 });

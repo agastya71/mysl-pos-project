@@ -584,6 +584,17 @@ export class TransactionController {
   }
 
   /**
+   * GET /api/v1/transactions/summary — sales dashboard data
+   */
+  async getSummary(
+    _req: Request,
+    res: Response<ApiResponse<any>>
+  ) {
+    const data = await this.transactionService.getSummary();
+    res.status(200).json({ success: true, data });
+  }
+
+  /**
    * Refund a completed transaction (POST /api/v1/transactions/:id/refund)
    */
   async refundTransaction(
