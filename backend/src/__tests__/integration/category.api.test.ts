@@ -286,8 +286,8 @@ describe('Category API Integration Tests', () => {
       // Mock check for products
       (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
-        // Mock check for subcategories
-        .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
+        // Mock check for subcategories (SELECT id ... returns no rows = no children)
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 })
         // Mock UPDATE
         .mockResolvedValueOnce({ rows: [{ id: 'cat-123' }], rowCount: 1 });
 
@@ -302,8 +302,8 @@ describe('Category API Integration Tests', () => {
       // Mock check for products
       (pool.query as jest.Mock)
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
-        // Mock check for subcategories
-        .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
+        // Mock check for subcategories (SELECT id ... returns no rows = no children)
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 })
         // Mock UPDATE with no rows
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
 

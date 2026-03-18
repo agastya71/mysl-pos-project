@@ -54,6 +54,7 @@ import { z } from 'zod';
 import { CategoryService } from '../services/category.service';
 import { ApiResponse } from '../types/api.types';
 import { CreateCategoryRequest, UpdateCategoryRequest, CategoryWithChildren } from '../types/category.types';
+import { AppError } from '../middleware/error.middleware';
 
 const categoryService = new CategoryService();
 
@@ -246,6 +247,9 @@ export const createCategory = async (
       },
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return next(new AppError(400, 'VALIDATION_ERROR', error.errors[0]?.message || 'Validation failed'));
+    }
     next(error);
   }
 };

@@ -259,7 +259,7 @@ export class SquarePaymentProcessor implements IPaymentProcessor {
       if (errs && Array.isArray(errs) && errs.length > 0) {
         return errs.map((e: any) => e.detail || e.category).join('; ');
       }
-      return error.message;
+      return (error as Error).message;
     }
     if (error instanceof Error) return error.message;
     return 'Square payment processing error';
