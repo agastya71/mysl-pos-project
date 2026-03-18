@@ -122,7 +122,7 @@ export interface ProductSnapshot {
  * @interface Payment
  * @property {string} id - UUID primary key
  * @property {string} transaction_id - Foreign key to transactions table
- * @property {'cash' | 'credit_card' | 'debit_card' | 'check'} payment_method - Payment method
+ * @property {'cash' | 'credit_card' | 'debit_card' | 'check' | 'gift_card'} payment_method - Payment method
  * @property {number} amount - Payment amount (decimal 10,2)
  * @property {'pending' | 'completed' | 'failed'} status - Payment status
  * @property {string} [payment_processor] - External processor (Stripe, Square, etc.)
@@ -136,7 +136,7 @@ export interface ProductSnapshot {
 export interface Payment {
   id: string;
   transaction_id: string;
-  payment_method: 'cash' | 'credit_card' | 'debit_card' | 'check';
+  payment_method: 'cash' | 'credit_card' | 'debit_card' | 'check' | 'gift_card';
   amount: number;
   status: 'pending' | 'completed' | 'failed';
   payment_processor?: string;
