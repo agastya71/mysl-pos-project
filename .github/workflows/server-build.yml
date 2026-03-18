@@ -84,6 +84,11 @@ jobs:
           echo "REDIS_PASSWORD=test_password" >> .env.production
           echo "JWT_ACCESS_SECRET=$(openssl rand -base64 32)" >> .env.production
           echo "JWT_REFRESH_SECRET=$(openssl rand -base64 32)" >> .env.production
+          mkdir -p nginx/ssl
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout nginx/ssl/privkey.pem \
+            -out nginx/ssl/fullchain.pem \
+            -subj "/C=US/ST=CI/L=CI/O=POS-Test/CN=localhost"
 
       - name: Start services
         run: |

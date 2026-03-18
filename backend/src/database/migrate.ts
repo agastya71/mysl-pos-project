@@ -65,6 +65,7 @@ const getMigrationOrder = (): Migration[] => {
     'donations',
     'accounts_payable',
     'inventory_counts',
+    'gift_cards',
   ];
 
   // Level 6: Fifth level dependencies
@@ -75,6 +76,7 @@ const getMigrationOrder = (): Migration[] => {
     'vendor_payments',
     'inventory_reconciliations',
     'inventory_adjustments',
+    'gift_card_transactions',
   ];
 
   // Level 7: Sixth level dependencies
