@@ -952,6 +952,63 @@ export class TransactionService {
       );
     }
   }
+
+  /**
+   * Returns a sales summary dashboard report with three read-only queries:
+   *   1. Sales totals (today / this week / this month)
+   *   2. Payment method breakdown for the current month
+   *   3. Top 10 products by revenue for the current month
+   */
+  async getSummary(): Promise<{
+    summary: Record<string, unknown>;
+    payment_breakdown: Record<string, unknown>[];
+    top_products: Record<string, unknown>[];
+  }> {
+    const [summaryResult, breakdownResult, topProductsResult] = await Promise.all([
+      pool.query(`
+        SELECT
+          COALESCE(SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN total_amount ELSE 0 END), 0) AS today,
+          COALESCE(COUNT(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 END)::int, 0) AS today_count,
+          COALESCE(SUM(CASE WHEN created_at >= DATE_TRUNC('week', NOW()) THEN total_amount ELSE 0 END), 0) AS this_week,
+          COALESCE(COUNT(CASE WHEN created_at >= DATE_TRUNC('week', NOW()) THEN 1 END)::int, 0) AS this_week_count,
+          COALESCE(SUM(CASE WHEN created_at >= DATE_TRUNC('month', NOW()) THEN total_amount ELSE 0 END), 0) AS this_month,
+          COALESCE(COUNT(CASE WHEN created_at >= DATE_TRUNC('month', NOW()) THEN 1 END)::int, 0) AS this_month_count
+        FROM transactions WHERE status = 'completed'
+      `),
+      pool.query(`
+        SELECT p.payment_method,
+               COALESCE(SUM(p.amount), 0) AS total_amount,
+               COUNT(*)::int AS count
+        FROM payments p
+        JOIN transactions t ON t.id = p.transaction_id
+        WHERE t.status = 'completed'
+          AND t.created_at >= DATE_TRUNC('month', NOW())
+        GROUP BY p.payment_method
+        ORDER BY total_amount DESC
+      `),
+      pool.query(`
+        SELECT pr.name AS product_name,
+               c.name AS category_name,
+               SUM(ti.quantity)::int AS quantity_sold,
+               SUM(ti.total_price) AS total_revenue
+        FROM transaction_items ti
+        JOIN transactions t ON t.id = ti.transaction_id
+        JOIN products pr ON pr.id = ti.product_id
+        LEFT JOIN categories c ON c.id = pr.category_id
+        WHERE t.status = 'completed'
+          AND t.created_at >= DATE_TRUNC('month', NOW())
+        GROUP BY pr.id, pr.name, c.name
+        ORDER BY total_revenue DESC
+        LIMIT 10
+      `),
+    ]);
+
+    return {
+      summary: summaryResult.rows[0] ?? {},
+      payment_breakdown: breakdownResult.rows,
+      top_products: topProductsResult.rows,
+    };
+  }
 }
 
 /**

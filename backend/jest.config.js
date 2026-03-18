@@ -18,6 +18,7 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   moduleFileExtensions: ['ts', 'js', 'json'],
+  modulePaths: ['<rootDir>/../node_modules'],
   verbose: true,
   testTimeout: 10000,
   globals: {

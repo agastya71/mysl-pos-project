@@ -17,6 +17,10 @@ router.get('/', requirePermission('transactions', 'read'), (req, res, next) => {
   transactionController.getTransactions(req, res).catch(next);
 });
 
+router.get('/summary', requirePermission('transactions', 'read'), (req, res, next) => {
+  (transactionController.getSummary as any)(req, res).catch(next);
+});
+
 router.get('/:id', requirePermission('transactions', 'read'), (req, res, next) => {
   (transactionController.getTransactionById as any)(req, res).catch(next);
 });

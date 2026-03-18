@@ -12,6 +12,7 @@ import employeeRoutes from './employee.routes';
 import roleRoutes from './role.routes';
 import giftCardRoutes from './gift-card.routes';
 import reconciliationRoutes from './reconciliation.routes';
+import paymentsRoutes from './payments.routes';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/employees', employeeRoutes);
 router.use('/roles', roleRoutes);
 router.use('/gift-cards', giftCardRoutes);
 router.use('/reconciliation', reconciliationRoutes);
+router.use('/payments', paymentsRoutes);
 
 export default router;
