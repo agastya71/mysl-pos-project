@@ -1,6 +1,7 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { requestLogger } from './middleware/logger.middleware';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { apiLimiter } from './middleware/rateLimit.middleware';
@@ -40,6 +41,7 @@ export const createApp = (): Application => {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }));
+  app.use(cookieParser());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(requestLogger);

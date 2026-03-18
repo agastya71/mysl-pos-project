@@ -114,7 +114,6 @@ export interface LoginResponse {
   };
   tokens: {
     accessToken: string;
-    refreshToken: string;
   };
 }
 
@@ -263,7 +262,8 @@ export const authApi = {
    *
    * @see auth.slice.ts for Redux integration
    */
-  logout: async (refreshToken: string): Promise<void> => {
-    await apiClient.post('/auth/logout', { refreshToken });
+  logout: async (): Promise<void> => {
+    // Refresh token is sent automatically via httpOnly cookie
+    await apiClient.post('/auth/logout', {});
   },
 };

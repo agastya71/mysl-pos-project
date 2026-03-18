@@ -135,8 +135,8 @@ export const login = createAsyncThunk(
       const response = await authApi.login(credentials);
 
       // Persist authentication data in localStorage for session persistence
+      // Refresh token is stored only in the httpOnly cookie set by the server
       localStorage.setItem('accessToken', response.tokens.accessToken);
-      localStorage.setItem('refreshToken', response.tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.user));
 
       return response;
@@ -179,20 +179,16 @@ export const login = createAsyncThunk(
  * @see authApi.logout for backend API call
  */
 export const logout = createAsyncThunk('auth/logout', async () => {
-  // Attempt to revoke refresh token on backend (best-effort)
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (refreshToken) {
-    try {
-      await authApi.logout(refreshToken);
-    } catch (error) {
-      // Continue with logout even if API call fails (network error, etc.)
-      // This ensures user can always log out on frontend
-    }
+  // Tell backend to revoke the refresh token cookie (best-effort)
+  try {
+    await authApi.logout();
+  } catch (error) {
+    // Continue with logout even if API call fails (network error, etc.)
   }
 
-  // Clear all authentication data from localStorage
+  // Clear access token and user from localStorage
+  // (refresh token is cleared server-side via Set-Cookie: Max-Age=0)
   localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
 });
 
