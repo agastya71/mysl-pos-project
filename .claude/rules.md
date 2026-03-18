@@ -16,7 +16,7 @@ This document defines the coding rules and standards for the POS System project.
 - **ALWAYS** validate and sanitize user inputs
 - **ALWAYS** use parameterized queries to prevent SQL injection
 - **ALWAYS** use HTTPS/TLS for data in transit
-- Follow PCI DSS guidelines for payment data (delegate to Square/Stripe)
+- Follow PCI DSS guidelines for payment data (delegate to Square; Stripe is optional backup)
 - Implement proper authentication and authorization checks
 - Use bcrypt for password hashing (minimum 10 rounds)
 - Implement rate limiting on all API endpoints
@@ -480,8 +480,7 @@ function calculateFinalPrice(
 
 Before submitting PR, verify:
 - [ ] Code follows style guide
-- [ ] Tests were written before implementation (TDD)
-- [ ] Tests are included and passing
+- [ ] Tests were written before implementation (TDD) and are passing
 - [ ] Documentation is updated
 - [ ] No console.logs or debugger statements
 - [ ] Error handling is implemented
@@ -503,14 +502,3 @@ Before submitting PR, verify:
 - ❌ Disable ESLint rules without explanation
 - ❌ Use nested callbacks (callback hell)
 
-## When in Doubt
-
-1. **Check existing code** - Follow established patterns
-2. **Ask for review** - Get feedback early
-3. **Favor readability** - Code is read more than written
-4. **Keep it simple** - Simple solutions are easier to maintain
-5. **Think security** - Always consider security implications
-
----
-
-**Remember:** These rules exist to maintain code quality, security, and consistency. When rules conflict, prioritize security and correctness over convenience.
