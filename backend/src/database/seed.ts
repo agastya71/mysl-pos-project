@@ -98,6 +98,79 @@ export const seedDatabase = async (): Promise<void> => {
       logger.warn('Skipping system settings creation (no admin user created)');
     }
 
+    // Create default roles
+    const roles = [
+      { role_name: 'Admin', description: 'Full system access' },
+      { role_name: 'Manager', description: 'Store operations and approvals' },
+      { role_name: 'Cashier', description: 'Sales transactions only' },
+    ];
+
+    const roleIds: Record<string, number> = {};
+    for (const role of roles) {
+      const roleResult = await client.query(`
+        INSERT INTO roles (role_name, description, is_active)
+        VALUES ($1, $2, true)
+        ON CONFLICT (role_name) DO UPDATE SET description = EXCLUDED.description
+        RETURNING id
+      `, [role.role_name, role.description]);
+      roleIds[role.role_name] = roleResult.rows[0].id;
+    }
+    logger.info('Created default roles');
+
+    // Create payments permissions
+    const paymentsPermissions = [
+      { permission_name: 'payments:create', resource: 'payments', action: 'create', description: 'Initiate Square Terminal checkout' },
+      { permission_name: 'payments:read', resource: 'payments', action: 'read', description: 'Poll checkout status' },
+      { permission_name: 'payments:update', resource: 'payments', action: 'update', description: 'Cancel a checkout' },
+    ];
+
+    const permissionIds: Record<string, number> = {};
+    for (const perm of paymentsPermissions) {
+      const permResult = await client.query(`
+        INSERT INTO permissions (permission_name, resource, action, description)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (permission_name) DO UPDATE SET description = EXCLUDED.description
+        RETURNING id
+      `, [perm.permission_name, perm.resource, perm.action, perm.description]);
+      permissionIds[perm.permission_name] = permResult.rows[0].id;
+    }
+    logger.info('Created payments permissions');
+
+    // Assign permissions to roles
+    // Admin and Manager: all payments permissions; Cashier: create and read only
+    const rolePermissionMappings = [
+      { roleName: 'Admin', permissionName: 'payments:create' },
+      { roleName: 'Admin', permissionName: 'payments:read' },
+      { roleName: 'Admin', permissionName: 'payments:update' },
+      { roleName: 'Manager', permissionName: 'payments:create' },
+      { roleName: 'Manager', permissionName: 'payments:read' },
+      { roleName: 'Manager', permissionName: 'payments:update' },
+      { roleName: 'Cashier', permissionName: 'payments:create' },
+      { roleName: 'Cashier', permissionName: 'payments:read' },
+    ];
+
+    for (const mapping of rolePermissionMappings) {
+      await client.query(`
+        INSERT INTO role_permissions (role_id, permission_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `, [roleIds[mapping.roleName], permissionIds[mapping.permissionName]]);
+    }
+    logger.info('Assigned permissions to roles');
+
+    // Create admin employee record (links auth user to RBAC role)
+    if (userId) {
+      await client.query(`
+        INSERT INTO employees (
+          user_id, first_name, last_name, email,
+          hire_date, role_id, is_active
+        )
+        VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, true)
+        ON CONFLICT (email) DO NOTHING
+      `, [userId, 'System', 'Administrator', 'admin@pos-system.local', roleIds['Admin']]);
+      logger.info('Created admin employee record');
+    }
+
     await client.query('COMMIT');
     logger.info('Database seeding completed successfully');
   } catch (error) {
