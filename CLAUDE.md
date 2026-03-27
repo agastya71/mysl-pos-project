@@ -44,9 +44,16 @@ npm run seed          # Seed initial data
 npm run test          # Jest (all)
 npm run test:watch    # Watch mode
 npm run test:unit     # Unit tests only
-npm run test:integration  # Integration tests only
+npm run test:integration  # Integration tests only (requires Docker services running)
 npm run test:coverage # Coverage report
+
+# Run a single test file
+npm test -- --testPathPattern="products.test"
+# Run tests matching a name
+npm test -- --testNamePattern="should create product"
 ```
+
+Test files live under `backend/src/__tests__/`. Integration tests require PostgreSQL and Redis to be running (`docker-compose up` first).
 
 ### POS Client — Electron (`cd pos-client`)
 ```bash
@@ -171,3 +178,7 @@ Detailed specs live in `docs/architecture/`:
 
 `.claude/rules.md` has authoritative coding standards with examples.
 `.claude/context.md` has business process flows (sales, receiving, donations, inventory counts, AP).
+
+## Commit Message Scopes
+
+Common scopes for conventional commits in this repo: `products`, `categories`, `vendors`, `transactions`, `payments`, `inventory`, `auth`, `ap` (accounts payable), `po` (purchase orders), `receiving`, `donations`, `import`, `users`, `terminals`, `reports`.
