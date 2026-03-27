@@ -49,6 +49,7 @@ import { AuthService } from '../services/auth.service';
 import { ApiResponse, LoginRequest, LoginResponse, RefreshTokenRequest, AuthTokens } from '../types/api.types';
 import { z } from 'zod';
 import { AppError } from '../middleware/error.middleware';
+import { env } from '../config/env';
 
 /**
  * Zod validation schema for login request
@@ -224,7 +225,7 @@ export class AuthController {
 
     res.cookie('refreshToken', result.tokens.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
