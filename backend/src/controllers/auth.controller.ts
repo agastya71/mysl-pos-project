@@ -387,18 +387,26 @@ export class AuthController {
    *
    * @see AuthService.logout for implementation with Redis token removal
    */
-  async logout(req: Request<{}, {}, RefreshTokenRequest>, res: Response<ApiResponse>) {
+  async logout(req: Request<{}, {}, Partial<RefreshTokenRequest>>, res: Response<ApiResponse>) {
     if (!req.user) {
       throw new AppError(401, 'UNAUTHORIZED', 'Authentication required');
     }
 
-    const validation = refreshTokenSchema.safeParse(req.body);
-    if (!validation.success) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'Invalid request data', validation.error.errors);
-    }
+    const rawToken = (req.cookies?.refreshToken as string | undefined) ?? req.body?.refreshToken;
 
-    const { refreshToken } = validation.data;
-    await this.authService.logout(req.user.userId, refreshToken);
+    // Always clear cookie — idempotent regardless of whether token is present
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+
+    if (rawToken) {
+      const validation = refreshTokenSchema.safeParse({ refreshToken: rawToken });
+      if (validation.success) {
+        await this.authService.logout(req.user.userId, validation.data.refreshToken);
+      }
+    }
 
     res.json({
       success: true,
