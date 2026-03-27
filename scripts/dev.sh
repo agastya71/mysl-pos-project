@@ -42,3 +42,27 @@ if [ ! -f "backend/.env" ]; then
     log "Created backend/.env with generated dev secrets."
     warn "Review backend/.env before running in production."
 fi
+
+# ── Infra ─────────────────────────────────────────────────────────────────────
+log "Starting infrastructure (postgres + redis)..."
+docker-compose up -d postgres redis
+
+wait_healthy() {
+    local name=$1
+    local container=$2
+    local timeout=60
+    local elapsed=0
+
+    log "Waiting for ${name} to be healthy..."
+    until [ "$(docker inspect --format='{{.State.Health.Status}}' "${container}" 2>/dev/null)" = "healthy" ]; do
+        if [ "${elapsed}" -ge "${timeout}" ]; then
+            error "${name} did not become healthy within ${timeout}s. Check: docker logs ${container}"
+        fi
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    log "${name} is healthy."
+}
+
+wait_healthy "PostgreSQL" "pos-postgres"
+wait_healthy "Redis"      "pos-redis"
