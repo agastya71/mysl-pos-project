@@ -85,3 +85,20 @@ if [ ! -f ".dev-initialized" ]; then
 else
     log "Database already seeded — skipping. (Delete .dev-initialized to re-seed.)"
 fi
+
+# ── Launch ────────────────────────────────────────────────────────────────────
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Backend API   → http://localhost:3000"
+echo "  Admin         → http://localhost:3002"
+echo "  POS Client    → Electron window"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+exec node_modules/.bin/concurrently \
+    --kill-others-on-fail \
+    --names "backend,admin,pos-client" \
+    --prefix-colors "cyan,magenta,yellow" \
+    "npm run dev --workspace=backend" \
+    "npm run dev --workspace=admin-dashboard" \
+    "npm run dev --workspace=pos-client"
