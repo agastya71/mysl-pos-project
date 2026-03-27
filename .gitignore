@@ -113,3 +113,6 @@ nginx/ssl/*.cert
 
 # GitHub Actions artifacts
 artifacts/
+
+# Dev initialization marker
+.dev-initialized
