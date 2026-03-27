@@ -121,16 +121,21 @@ const refreshTokenSchema = z.object({
  * @class AuthController
  */
 export class AuthController {
-  private authService: AuthService;
+  private _authService: AuthService | null = null;
+
+  private get authService(): AuthService {
+    if (!this._authService) {
+      this._authService = new AuthService();
+    }
+    return this._authService;
+  }
 
   /**
    * Initialize AuthController with AuthService instance
    *
    * @constructor
    */
-  constructor() {
-    this.authService = new AuthService();
-  }
+  constructor() {}
 
   /**
    * Login with username and password
@@ -216,6 +221,13 @@ export class AuthController {
 
     const { username, password } = validation.data;
     const result = await this.authService.login(username, password);
+
+    res.cookie('refreshToken', result.tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     res.json({
       success: true,
