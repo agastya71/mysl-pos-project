@@ -29,9 +29,6 @@ describe('Auth API — cookie flow', () => {
     app.use(cookieParser());
     app.use(express.json());
 
-    (loginLimiter as unknown as jest.Mock).mockImplementation((_req: any, _res: any, next: any) => next());
-    (refreshLimiter as unknown as jest.Mock).mockImplementation((_req: any, _res: any, next: any) => next());
-
     app.use('/api/v1/auth', authRoutes);
     app.use((err: any, _req: any, res: any, _next: any) => {
       res.status(err.statusCode || 500).json({
@@ -49,6 +46,10 @@ describe('Auth API — cookie flow', () => {
     });
     (loginLimiter as unknown as jest.Mock).mockImplementation((_req: any, _res: any, next: any) => next());
     (refreshLimiter as unknown as jest.Mock).mockImplementation((_req: any, _res: any, next: any) => next());
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('POST /api/v1/auth/login', () => {
@@ -155,7 +156,8 @@ describe('Auth API — cookie flow', () => {
       expect(mockLogout).toHaveBeenCalledWith('user-123', 'refresh-tok');
       const cookies = res.headers['set-cookie'] as unknown as string[];
       const refreshCookie = cookies?.find((c: string) => c.startsWith('refreshToken='));
-      expect(refreshCookie).toContain('Expires=Thu, 01 Jan 1970');
+      // Cookie is cleared when Max-Age=0 or Expires is in the past
+      expect(refreshCookie).toMatch(/Max-Age=0|Expires=.*1970/);
     });
 
     it('should return 200 even when no refreshToken present (graceful logout)', async () => {
