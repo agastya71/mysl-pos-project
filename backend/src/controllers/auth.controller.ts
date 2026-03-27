@@ -49,6 +49,7 @@ import { AuthService } from '../services/auth.service';
 import { ApiResponse, LoginRequest, LoginResponse, RefreshTokenRequest, AuthTokens } from '../types/api.types';
 import { z } from 'zod';
 import { AppError } from '../middleware/error.middleware';
+import { env } from '../config/env';
 
 /**
  * Zod validation schema for login request
@@ -121,16 +122,21 @@ const refreshTokenSchema = z.object({
  * @class AuthController
  */
 export class AuthController {
-  private authService: AuthService;
+  private _authService: AuthService | null = null;
+
+  private get authService(): AuthService {
+    if (!this._authService) {
+      this._authService = new AuthService();
+    }
+    return this._authService;
+  }
 
   /**
    * Initialize AuthController with AuthService instance
    *
    * @constructor
    */
-  constructor() {
-    this.authService = new AuthService();
-  }
+  constructor() {}
 
   /**
    * Login with username and password
@@ -217,6 +223,13 @@ export class AuthController {
     const { username, password } = validation.data;
     const result = await this.authService.login(username, password);
 
+    res.cookie('refreshToken', result.tokens.refreshToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     res.json({
       success: true,
       data: result,
@@ -252,7 +265,7 @@ export class AuthController {
    * - Token rotation for security best practices
    *
    * @async
-   * @param {Request<{}, {}, RefreshTokenRequest>} req - Express request with refresh token in body
+   * @param {Request<{}, {}, Partial<RefreshTokenRequest>>} req - Express request with refresh token in httpOnly cookie or body
    * @param {Response<ApiResponse<AuthTokens>>} res - Express response with new tokens
    * @returns {Promise<void>} Sends 200 OK with new access token and refresh token
    * @throws {AppError} 400 if validation fails (missing refresh token)
@@ -287,14 +300,23 @@ export class AuthController {
    *
    * @see AuthService.refreshToken for implementation with token rotation
    */
-  async refresh(req: Request<{}, {}, RefreshTokenRequest>, res: Response<ApiResponse<AuthTokens>>) {
-    const validation = refreshTokenSchema.safeParse(req.body);
+  async refresh(req: Request<{}, {}, Partial<RefreshTokenRequest>>, res: Response<ApiResponse<AuthTokens>>) {
+    const rawToken = (req.cookies?.refreshToken as string | undefined) ?? req.body?.refreshToken;
+
+    const validation = refreshTokenSchema.safeParse({ refreshToken: rawToken });
     if (!validation.success) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Invalid request data', validation.error.errors);
     }
 
     const { refreshToken } = validation.data;
     const tokens = await this.authService.refreshToken(refreshToken);
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     res.json({
       success: true,
@@ -330,7 +352,7 @@ export class AuthController {
    * - Redirect to login page
    *
    * @async
-   * @param {Request<{}, {}, RefreshTokenRequest>} req - Express request with refresh token in body
+   * @param {Request<{}, {}, Partial<RefreshTokenRequest>>} req - Express request with refresh token in httpOnly cookie or body (optional — logout is graceful if absent)
    * @param {Response<ApiResponse>} res - Express response with success message
    * @returns {Promise<void>} Sends 200 OK with logout success message
    * @throws {AppError} 401 if user not authenticated (missing or invalid access token)
@@ -365,18 +387,26 @@ export class AuthController {
    *
    * @see AuthService.logout for implementation with Redis token removal
    */
-  async logout(req: Request<{}, {}, RefreshTokenRequest>, res: Response<ApiResponse>) {
+  async logout(req: Request<{}, {}, Partial<RefreshTokenRequest>>, res: Response<ApiResponse>) {
     if (!req.user) {
       throw new AppError(401, 'UNAUTHORIZED', 'Authentication required');
     }
 
-    const validation = refreshTokenSchema.safeParse(req.body);
-    if (!validation.success) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'Invalid request data', validation.error.errors);
-    }
+    const rawToken = (req.cookies?.refreshToken as string | undefined) ?? req.body?.refreshToken;
 
-    const { refreshToken } = validation.data;
-    await this.authService.logout(req.user.userId, refreshToken);
+    // Always clear cookie — idempotent regardless of whether token is present
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+
+    if (rawToken) {
+      const validation = refreshTokenSchema.safeParse({ refreshToken: rawToken });
+      if (validation.success) {
+        await this.authService.logout(req.user.userId, validation.data.refreshToken);
+      }
+    }
 
     res.json({
       success: true,

@@ -8,7 +8,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { authenticateToken, requirePermission } from '../middleware/auth.middleware';
 import { AppError } from '../middleware/error.middleware';
 import terminalService from '../services/terminal.service';
 
@@ -22,7 +22,7 @@ const createCheckoutSchema = z.object({
 router.use(authenticateToken);
 
 // POST /api/v1/payments/terminal/checkout
-router.post('/terminal/checkout', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/terminal/checkout', requirePermission('payments', 'create'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validation = createCheckoutSchema.safeParse(req.body);
     if (!validation.success) {
@@ -39,7 +39,7 @@ router.post('/terminal/checkout', async (req: Request, res: Response, next: Next
 });
 
 // GET /api/v1/payments/terminal/checkout/:id
-router.get('/terminal/checkout/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/terminal/checkout/:id', requirePermission('payments', 'read'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const result = await terminalService.getCheckoutStatus(id);
@@ -50,7 +50,7 @@ router.get('/terminal/checkout/:id', async (req: Request, res: Response, next: N
 });
 
 // POST /api/v1/payments/terminal/checkout/:id/cancel
-router.post('/terminal/checkout/:id/cancel', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/terminal/checkout/:id/cancel', requirePermission('payments', 'update'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     await terminalService.cancelCheckout(id);
