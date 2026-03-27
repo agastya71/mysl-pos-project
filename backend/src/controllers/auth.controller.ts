@@ -265,7 +265,7 @@ export class AuthController {
    * - Token rotation for security best practices
    *
    * @async
-   * @param {Request<{}, {}, RefreshTokenRequest>} req - Express request with refresh token in body
+   * @param {Request<{}, {}, Partial<RefreshTokenRequest>>} req - Express request with refresh token in httpOnly cookie or body
    * @param {Response<ApiResponse<AuthTokens>>} res - Express response with new tokens
    * @returns {Promise<void>} Sends 200 OK with new access token and refresh token
    * @throws {AppError} 400 if validation fails (missing refresh token)
@@ -352,7 +352,7 @@ export class AuthController {
    * - Redirect to login page
    *
    * @async
-   * @param {Request<{}, {}, RefreshTokenRequest>} req - Express request with refresh token in body
+   * @param {Request<{}, {}, Partial<RefreshTokenRequest>>} req - Express request with refresh token in httpOnly cookie or body (optional — logout is graceful if absent)
    * @param {Response<ApiResponse>} res - Express response with success message
    * @returns {Promise<void>} Sends 200 OK with logout success message
    * @throws {AppError} 401 if user not authenticated (missing or invalid access token)
