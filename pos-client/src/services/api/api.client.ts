@@ -10,6 +10,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: this.baseURL,
+      withCredentials: true, // Send httpOnly cookies (refresh token) cross-origin
       headers: {
         'Content-Type': 'application/json',
       },
@@ -75,22 +76,21 @@ class ApiClient {
           originalRequest._retry = true;
 
           try {
-            const refreshToken = localStorage.getItem('refreshToken');
-            if (refreshToken) {
-              const response = await axios.post(`${this.baseURL}/auth/refresh`, {
-                refreshToken,
-              });
+            // No refresh token in body — httpOnly cookie is sent automatically
+            const response = await axios.post(
+              `${this.baseURL}/auth/refresh`,
+              {},
+              { withCredentials: true }
+            );
 
-              const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-              localStorage.setItem('accessToken', accessToken);
-              localStorage.setItem('refreshToken', newRefreshToken);
+            const { accessToken } = response.data.data;
+            localStorage.setItem('accessToken', accessToken);
 
-              originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-              return this.client(originalRequest);
-            }
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+            return this.client(originalRequest);
           } catch (refreshError) {
             localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
             window.location.href = '/login';
             return Promise.reject(refreshError);
           }
