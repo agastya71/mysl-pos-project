@@ -300,7 +300,7 @@ export class AuthController {
    *
    * @see AuthService.refreshToken for implementation with token rotation
    */
-  async refresh(req: Request, res: Response<ApiResponse<AuthTokens>>) {
+  async refresh(req: Request<{}, {}, Partial<RefreshTokenRequest>>, res: Response<ApiResponse<AuthTokens>>) {
     const rawToken = (req.cookies?.refreshToken as string | undefined) ?? req.body?.refreshToken;
 
     const validation = refreshTokenSchema.safeParse({ refreshToken: rawToken });
