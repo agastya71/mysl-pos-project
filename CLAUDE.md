@@ -2,24 +2,31 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## STOP — Worktree Gate (read before touching any file)
 
-A full-stack Point of Sale (POS) system for non-profit organizations (thrift stores, donation centers). It manages sales transactions, inventory, vendor/donor relationships, purchase orders, accounts payable, and physical inventory reconciliation — all with **local-first architecture** (no cloud, except Square for payment processing).
-
-## Worktree Workflow (mandatory)
-
-**Never edit tracked files directly on `main`.** Every task requires a git worktree on a feature branch. Full workflow in `.claude/rules.md`, but the key steps are:
+**Do not edit any tracked file — including this CLAUDE.md — without first creating a worktree on a feature branch.** This applies to every task: code, docs, config, tests, everything. No exceptions.
 
 ```bash
+# Step 1 — create worktree + branch (run from main repo root)
 git worktree add ../pos-<branch-name> -b <branch-name>
+
+# Step 2 — set identity in the new worktree
 cd ../pos-<branch-name>
 git config --local user.name "agastya71"
 git config --local user.email "agastya71@gmail.com"
-# ... do all work here, then PR and merge ...
-git worktree remove ../pos-<branch-name>   # after branch is merged
+
+# Step 3 — do all work and commits here, then open a PR
+# Step 4 — after branch is merged, clean up
+git worktree remove ../pos-<branch-name>
 ```
 
 Branch naming: `feature/`, `fix/`, `refactor/`, `docs/`, `test/` prefixes.
+
+If you find yourself on `main` with uncommitted changes, stash them (`git stash`), create the worktree, then `git stash pop` inside it before continuing.
+
+## Project Overview
+
+A full-stack Point of Sale (POS) system for non-profit organizations (thrift stores, donation centers). It manages sales transactions, inventory, vendor/donor relationships, purchase orders, accounts payable, and physical inventory reconciliation — all with **local-first architecture** (no cloud, except Square for payment processing).
 
 ## Commands
 
