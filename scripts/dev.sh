@@ -66,3 +66,22 @@ wait_healthy() {
 
 wait_healthy "PostgreSQL" "pos-postgres"
 wait_healthy "Redis"      "pos-redis"
+
+# ── Migrations ────────────────────────────────────────────────────────────────
+log "Running migrations..."
+npm run migrate --workspace=backend
+
+# ── Seed (first run only) ─────────────────────────────────────────────────────
+if [ ! -f ".dev-initialized" ]; then
+    # Ensure .dev-initialized is gitignored (idempotent append)
+    if ! grep -qxF ".dev-initialized" .gitignore 2>/dev/null; then
+        echo ".dev-initialized" >> .gitignore
+    fi
+
+    log "Seeding database (first run)..."
+    npm run seed --workspace=backend
+    touch .dev-initialized
+    log "Database seeded. Delete .dev-initialized to re-seed on next start."
+else
+    log "Database already seeded — skipping. (Delete .dev-initialized to re-seed.)"
+fi
