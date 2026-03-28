@@ -17,6 +17,19 @@ const CreateInvoiceSchema = z.object({
   internal_notes: z.string().max(2000).optional(),
 });
 
+const UpdateInvoiceSchema = z.object({
+  due_date: z.string().optional(),
+  payment_terms: z.string().max(100).optional(),
+  discount_available: z.number().nonnegative().optional(),
+  discount_date: z.string().optional(),
+  notes: z.string().max(2000).optional(),
+  internal_notes: z.string().max(2000).optional(),
+}).refine((data) => Object.keys(data).length > 0, { message: 'At least one field must be provided' });
+
+const CancelInvoiceSchema = z.object({
+  reason: z.string().min(1, 'Cancellation reason is required').max(500),
+});
+
 export async function createInvoice(req: Request, res: Response): Promise<void> {
   const parsed = CreateInvoiceSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -38,19 +51,76 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
   }
 }
 
-// Stubs — implemented in Tasks 4-6
 export async function getInvoice(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  try {
+    const invoice = await apService.getInvoice(req.params.id);
+    res.status(200).json({ success: true, data: invoice });
+  } catch (err: any) {
+    if (err.message?.toLowerCase().includes('not found')) {
+      res.status(404).json({ success: false, error: { message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+    }
+  }
 }
+
 export async function listInvoices(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  try {
+    const query = {
+      vendor_id: req.query.vendor_id as string | undefined,
+      status: req.query.status as string | undefined,
+      overdue: req.query.overdue as string | undefined,
+      start_date: req.query.start_date as string | undefined,
+      end_date: req.query.end_date as string | undefined,
+      page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 20,
+    };
+    const result = await apService.listInvoices(query);
+    res.status(200).json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+  }
 }
+
 export async function updateInvoice(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  const parsed = UpdateInvoiceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { message: 'Validation error', details: parsed.error.issues } });
+    return;
+  }
+  try {
+    const invoice = await apService.updateInvoice(req.params.id, parsed.data);
+    res.status(200).json({ success: true, data: invoice });
+  } catch (err: any) {
+    if (err.message?.toLowerCase().includes('not found')) {
+      res.status(404).json({ success: false, error: { message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+    }
+  }
 }
+
 export async function cancelInvoice(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  const parsed = CancelInvoiceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { message: 'Validation error', details: parsed.error.issues } });
+    return;
+  }
+  try {
+    const invoice = await apService.cancelInvoice(req.params.id, parsed.data.reason);
+    res.status(200).json({ success: true, data: invoice });
+  } catch (err: any) {
+    if (err.message?.toLowerCase().includes('not found')) {
+      res.status(404).json({ success: false, error: { message: err.message } });
+    } else if (err.message) {
+      res.status(400).json({ success: false, error: { message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+    }
+  }
 }
+
+// Stubs — implemented in Task 5
 export async function getAgingReport(req: Request, res: Response): Promise<void> {
   res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
 }

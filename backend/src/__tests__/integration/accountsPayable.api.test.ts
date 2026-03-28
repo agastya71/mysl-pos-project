@@ -146,3 +146,165 @@ describe('POST /api/v1/accounts-payable', () => {
     expect(res.body.error.message).toBe('Validation error');
   });
 });
+
+describe('GET /api/v1/accounts-payable/:id', () => {
+  it('should return invoice with details when found', async () => {
+    const invoiceRow = {
+      id: AP_ID, ap_number: 'AP-2026-0001', vendor_id: VENDOR_ID,
+      purchase_order_id: null, invoice_number: 'INV-001',
+      invoice_date: '2026-03-01', due_date: '2026-03-31',
+      status: 'open', invoice_amount: '1000.00', amount_paid: '0.00',
+      amount_due: '1000.00', discount_available: '0.00', discount_date: null,
+      payment_terms: 'Net 30', notes: null, internal_notes: null,
+      created_by: USER_ID, created_at: '2026-03-01T00:00:00Z', updated_at: '2026-03-01T00:00:00Z',
+      vendor_number: 'VEND-000001', business_name: 'Test Vendor',
+      po_number: null,
+      alloc_id: null, payment_id: null, payment_number: null,
+      payment_date: null, payment_method: null, allocated_amount: null,
+      payment_status: null,
+    };
+
+    (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [invoiceRow], rowCount: 1 });
+
+    const res = await request(app).get(`/api/v1/accounts-payable/${AP_ID}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.id).toBe(AP_ID);
+    expect(res.body.data.vendor).toBeDefined();
+    expect(res.body.data.payments).toBeDefined();
+  });
+
+  it('should return 404 when not found', async () => {
+    (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const res = await request(app).get(`/api/v1/accounts-payable/${AP_ID}`);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /api/v1/accounts-payable', () => {
+  it('should list invoices with pagination', async () => {
+    const invoices = [{
+      id: AP_ID, ap_number: 'AP-2026-0001', vendor_id: VENDOR_ID,
+      invoice_date: '2026-03-01', due_date: '2026-03-31',
+      status: 'open', invoice_amount: '1000.00', amount_paid: '0.00',
+      amount_due: '1000.00', discount_available: '0.00', discount_date: null,
+      payment_terms: 'Net 30', notes: null, internal_notes: null,
+      purchase_order_id: null, invoice_number: null, created_by: USER_ID,
+      created_at: '2026-03-01T00:00:00Z', updated_at: '2026-03-01T00:00:00Z',
+    }];
+
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '1', total_due: '1000.00', overdue_total: '0.00' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: invoices, rowCount: 1 });
+
+    const res = await request(app).get('/api/v1/accounts-payable?page=1&limit=20');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.invoices).toHaveLength(1);
+    expect(res.body.data.total).toBe(1);
+  });
+
+  it('should filter by status', async () => {
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '0', total_due: '0', overdue_total: '0' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const res = await request(app).get('/api/v1/accounts-payable?status=paid');
+    expect(res.status).toBe(200);
+    expect(res.body.data.invoices).toHaveLength(0);
+  });
+
+  it('should filter overdue invoices', async () => {
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '0', total_due: '0', overdue_total: '0' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const res = await request(app).get('/api/v1/accounts-payable?overdue=true');
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('PUT /api/v1/accounts-payable/:id', () => {
+  it('should update editable fields', async () => {
+    const existing = {
+      id: AP_ID, status: 'open', vendor_id: VENDOR_ID,
+      ap_number: 'AP-2026-0001', invoice_amount: '1000.00', amount_paid: '0.00',
+      amount_due: '1000.00', discount_available: '0.00', discount_date: null,
+      payment_terms: 'Net 30', notes: null, internal_notes: null,
+      purchase_order_id: null, invoice_number: null, invoice_date: '2026-03-01',
+      due_date: '2026-03-31', created_by: USER_ID,
+      created_at: '2026-03-01T00:00:00Z', updated_at: '2026-03-01T00:00:00Z',
+    };
+    const updated = { ...existing, payment_terms: 'Net 60', due_date: '2026-04-30' };
+
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [existing], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [updated], rowCount: 1 });
+
+    const res = await request(app)
+      .put(`/api/v1/accounts-payable/${AP_ID}`)
+      .send({ payment_terms: 'Net 60', due_date: '2026-04-30' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.payment_terms).toBe('Net 60');
+  });
+
+  it('should return 400 with empty body', async () => {
+    const res = await request(app).put(`/api/v1/accounts-payable/${AP_ID}`).send({});
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /api/v1/accounts-payable/:id/cancel', () => {
+  it('should cancel an open invoice', async () => {
+    const existing = {
+      id: AP_ID, status: 'open', vendor_id: VENDOR_ID, amount_due: '1000.00',
+      ap_number: 'AP-2026-0001', invoice_amount: '1000.00', amount_paid: '0.00',
+      discount_available: '0.00', discount_date: null, payment_terms: null,
+      notes: null, internal_notes: null, purchase_order_id: null, invoice_number: null,
+      invoice_date: '2026-03-01', due_date: '2026-03-31', created_by: USER_ID,
+      created_at: '2026-03-01T00:00:00Z', updated_at: '2026-03-01T00:00:00Z',
+    };
+    const cancelled = { ...existing, status: 'cancelled' };
+
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
+      .mockResolvedValueOnce({ rows: [existing], rowCount: 1 }) // fetch
+      .mockResolvedValueOnce({ rows: [cancelled], rowCount: 1 }) // UPDATE status
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // vendor balance decrement
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // COMMIT
+
+    const res = await request(app)
+      .post(`/api/v1/accounts-payable/${AP_ID}/cancel`)
+      .send({ reason: 'Duplicate invoice' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('cancelled');
+  });
+
+  it('should return 400 when invoice is already paid', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
+      .mockResolvedValueOnce({ rows: [{
+        id: AP_ID, status: 'paid', vendor_id: VENDOR_ID, amount_due: '0.00',
+        ap_number: 'AP-2026-0001', invoice_amount: '1000.00', amount_paid: '1000.00',
+      }], rowCount: 1 }); // fetch — paid
+
+    const res = await request(app)
+      .post(`/api/v1/accounts-payable/${AP_ID}/cancel`)
+      .send({ reason: 'Duplicate invoice' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/Cannot cancel a paid or already cancelled invoice/i);
+  });
+
+  it('should return 400 when reason is missing', async () => {
+    const res = await request(app)
+      .post(`/api/v1/accounts-payable/${AP_ID}/cancel`)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+});
