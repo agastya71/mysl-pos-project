@@ -139,10 +139,9 @@ describe('Payments API — RBAC', () => {
         path.join(__dirname, '../../../src/database/seed.ts'),
         'utf-8'
       );
-      expect(seedContent).toContain("'payments'");
-      expect(seedContent).toContain("'create'");
-      expect(seedContent).toContain("'read'");
-      expect(seedContent).toContain("'update'");
+      expect(seedContent).toContain("'payments:create'");
+      expect(seedContent).toContain("'payments:read'");
+      expect(seedContent).toContain("'payments:update'");
       expect(seedContent).toContain('employees');
     });
   });
