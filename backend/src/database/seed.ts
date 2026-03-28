@@ -26,6 +26,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'employees:read',
     'roles:read',
     'permissions:read',
+    'accounts_payable:create', 'accounts_payable:read', 'accounts_payable:update',
+    'vendor_payments:create', 'vendor_payments:read', 'vendor_payments:update',
   ],
   admin: [
     'products:create', 'products:update', 'products:delete',
@@ -34,6 +36,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'employees:create', 'employees:update', 'employees:delete',
     'purchase_orders:approve', 'purchase_orders:delete',
     'roles:create', 'roles:update',
+    'vendor_payments:approve',
   ],
 };
 

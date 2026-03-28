@@ -13,6 +13,7 @@ import roleRoutes from './role.routes';
 import giftCardRoutes from './gift-card.routes';
 import reconciliationRoutes from './reconciliation.routes';
 import paymentsRoutes from './payments.routes';
+import accountsPayableRoutes from './accounts_payable.routes';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/roles', roleRoutes);
 router.use('/gift-cards', giftCardRoutes);
 router.use('/reconciliation', reconciliationRoutes);
 router.use('/payments', paymentsRoutes);
+router.use('/accounts-payable', accountsPayableRoutes);
 
 export default router;
