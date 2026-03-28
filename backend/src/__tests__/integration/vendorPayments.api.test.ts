@@ -397,3 +397,110 @@ describe('PUT /api/v1/vendor-payments/:id', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('POST /api/v1/vendor-payments/batch', () => {
+  it('should create multiple payments in one transaction', async () => {
+    const AP_ID_2 = '550e8400-e29b-41d4-a716-446655440401';
+
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
+      // Payment 1: vendor check
+      .mockResolvedValueOnce({ rows: [{ id: VENDOR_ID, business_name: 'Test Vendor', current_balance: '2000.00' }], rowCount: 1 })
+      // Payment 1: PMT number count
+      .mockResolvedValueOnce({ rows: [{ next_seq: 1 }], rowCount: 1 })
+      // Payment 1: INSERT payment
+      .mockResolvedValueOnce({ rows: [{ id: PAYMENT_ID, payment_number: 'PMT-2026-0001', vendor_id: VENDOR_ID, payment_date: '2026-03-28', payment_method: 'check', total_amount: '300.00', status: 'pending', reference_number: null, memo: null, approved_by: null, approved_at: null, created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z' }], rowCount: 1 })
+      // Payment 1 allocation: AP lock
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID, vendor_id: VENDOR_ID, invoice_amount: '500.00', amount_paid: '0.00', amount_due: '500.00', status: 'open' }], rowCount: 1 })
+      // Payment 1 allocation: INSERT allocation
+      .mockResolvedValueOnce({ rows: [{ id: 'alloc-1' }], rowCount: 1 })
+      // Payment 1: updateAPBalance lock
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID, amount_paid: '0.00', amount_due: '500.00', status: 'open', invoice_amount: '500.00', vendor_id: VENDOR_ID }], rowCount: 1 })
+      // Payment 1: updateAPBalance UPDATE
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID, amount_paid: '300.00', amount_due: '200.00', status: 'partial' }], rowCount: 1 })
+      // Payment 1: vendor balance UPDATE
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      // Payment 2: vendor check
+      .mockResolvedValueOnce({ rows: [{ id: VENDOR_ID, business_name: 'Test Vendor', current_balance: '1700.00' }], rowCount: 1 })
+      // Payment 2: PMT number count
+      .mockResolvedValueOnce({ rows: [{ next_seq: 2 }], rowCount: 1 })
+      // Payment 2: INSERT payment
+      .mockResolvedValueOnce({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440501', payment_number: 'PMT-2026-0002', vendor_id: VENDOR_ID, payment_date: '2026-03-28', payment_method: 'ach', total_amount: '200.00', status: 'pending', reference_number: null, memo: null, approved_by: null, approved_at: null, created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z' }], rowCount: 1 })
+      // Payment 2 allocation: AP lock
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID_2, vendor_id: VENDOR_ID, invoice_amount: '400.00', amount_paid: '0.00', amount_due: '400.00', status: 'open' }], rowCount: 1 })
+      // Payment 2 allocation: INSERT allocation
+      .mockResolvedValueOnce({ rows: [{ id: 'alloc-2' }], rowCount: 1 })
+      // Payment 2: updateAPBalance lock
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID_2, amount_paid: '0.00', amount_due: '400.00', status: 'open', invoice_amount: '400.00', vendor_id: VENDOR_ID }], rowCount: 1 })
+      // Payment 2: updateAPBalance UPDATE
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID_2, amount_paid: '200.00', amount_due: '200.00', status: 'partial' }], rowCount: 1 })
+      // Payment 2: vendor balance UPDATE
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      // COMMIT
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const res = await request(app)
+      .post('/api/v1/vendor-payments/batch')
+      .send({
+        payments: [
+          {
+            vendor_id: VENDOR_ID,
+            payment_date: '2026-03-28',
+            payment_method: 'check',
+            invoice_allocations: [{ ap_invoice_id: AP_ID, allocated_amount: 300 }],
+          },
+          {
+            vendor_id: VENDOR_ID,
+            payment_date: '2026-03-28',
+            payment_method: 'ach',
+            invoice_allocations: [{ ap_invoice_id: AP_ID_2, allocated_amount: 200 }],
+          },
+        ],
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data).toHaveLength(2);
+    expect(res.body.data[0].payment_number).toBe('PMT-2026-0001');
+    expect(res.body.data[1].payment_number).toBe('PMT-2026-0002');
+  });
+
+  it('should rollback all payments when one fails', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
+      // Payment 1 succeeds
+      .mockResolvedValueOnce({ rows: [{ id: VENDOR_ID, business_name: 'Test Vendor', current_balance: '2000.00' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ next_seq: 1 }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ id: PAYMENT_ID, payment_number: 'PMT-2026-0001', vendor_id: VENDOR_ID, payment_date: '2026-03-28', payment_method: 'check', total_amount: '300.00', status: 'pending', reference_number: null, memo: null, approved_by: null, approved_at: null, created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID, vendor_id: VENDOR_ID, invoice_amount: '500.00', amount_paid: '0.00', amount_due: '500.00', status: 'open' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ id: 'alloc-1' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID, amount_paid: '0.00', amount_due: '500.00', status: 'open', invoice_amount: '500.00', vendor_id: VENDOR_ID }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID, amount_paid: '300.00', amount_due: '200.00', status: 'partial' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      // Payment 2 vendor check — not found (triggers rollback)
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      // ROLLBACK
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const res = await request(app)
+      .post('/api/v1/vendor-payments/batch')
+      .send({
+        payments: [
+          {
+            vendor_id: VENDOR_ID,
+            payment_date: '2026-03-28',
+            payment_method: 'check',
+            invoice_allocations: [{ ap_invoice_id: AP_ID, allocated_amount: 300 }],
+          },
+          {
+            vendor_id: 'a0000000-0000-0000-0000-000000000099',
+            payment_date: '2026-03-28',
+            payment_method: 'check',
+            invoice_allocations: [{ ap_invoice_id: AP_ID, allocated_amount: 100 }],
+          },
+        ],
+      });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.message).toMatch(/vendor not found/i);
+  });
+});
