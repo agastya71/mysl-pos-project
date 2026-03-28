@@ -1,8 +1,88 @@
+import { PoolClient } from 'pg';
 import { pool } from '../config/database';
 import logger from '../utils/logger';
 import * as bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
+
+export const ROLE_PERMISSIONS: Record<string, string[]> = {
+  cashier: [
+    'products:read',
+    'categories:read',
+    'transactions:create', 'transactions:read',
+    'customers:create', 'customers:read',
+    'payments:create', 'payments:read',
+    'gift_cards:create', 'gift_cards:read',
+  ],
+  manager: [
+    'transactions:update',
+    'customers:update', 'customers:delete',
+    'payments:update',
+    'gift_cards:update', 'gift_cards:delete',
+    'inventory:adjust', 'inventory:read', 'inventory:reports',
+    'vendors:read',
+    'purchase_orders:create', 'purchase_orders:read',
+    'purchase_orders:update', 'purchase_orders:receive', 'purchase_orders:cancel',
+    'employees:read',
+    'roles:read',
+    'permissions:read',
+  ],
+  admin: [
+    'products:create', 'products:update', 'products:delete',
+    'categories:create', 'categories:update', 'categories:delete',
+    'vendors:create', 'vendors:update', 'vendors:delete',
+    'employees:create', 'employees:update', 'employees:delete',
+    'purchase_orders:approve', 'purchase_orders:delete',
+    'roles:create', 'roles:update',
+  ],
+};
+
+export async function seedPermissions(client: PoolClient): Promise<Record<string, number>> {
+  const allPermissions = new Set<string>(Object.values(ROLE_PERMISSIONS).flat());
+  const permissionIds: Record<string, number> = {};
+  for (const permName of allPermissions) {
+    const [resource, action] = permName.split(':');
+    const result = await client.query<{ id: number }>(
+      `INSERT INTO permissions (permission_name, resource, action, description)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (permission_name) DO UPDATE SET description = EXCLUDED.description
+       RETURNING id`,
+      [permName, resource, action, `${action} ${resource}`],
+    );
+    permissionIds[permName] = result.rows[0].id;
+  }
+  return permissionIds;
+}
+
+export async function seedRolePermissions(
+  client: PoolClient,
+  permissionIds: Record<string, number>,
+): Promise<void> {
+  const rolesResult = await client.query<{ id: number; role_name: string }>(
+    `SELECT id, role_name FROM roles WHERE role_name IN ('Admin', 'Manager', 'Cashier')`,
+  );
+  const roleIds: Record<string, number> = {};
+  for (const row of rolesResult.rows) {
+    roleIds[row.role_name] = row.id;
+  }
+
+  const cumulative: Record<string, string[]> = {
+    Cashier: ROLE_PERMISSIONS.cashier,
+    Manager: [...ROLE_PERMISSIONS.cashier, ...ROLE_PERMISSIONS.manager],
+    Admin: [...ROLE_PERMISSIONS.cashier, ...ROLE_PERMISSIONS.manager, ...ROLE_PERMISSIONS.admin],
+  };
+
+  for (const [roleName, perms] of Object.entries(cumulative)) {
+    const roleId = roleIds[roleName];
+    if (!roleId) continue;
+    for (const permName of perms) {
+      await client.query(
+        `INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT (role_id, permission_id) DO NOTHING`,
+        [roleId, permissionIds[permName]],
+      );
+    }
+  }
+}
 
 export const seedDatabase = async (): Promise<void> => {
   const client = await pool.connect();
@@ -117,45 +197,12 @@ export const seedDatabase = async (): Promise<void> => {
     }
     logger.info('Created default roles');
 
-    // Create payments permissions
-    const paymentsPermissions = [
-      { permission_name: 'payments:create', resource: 'payments', action: 'create', description: 'Initiate Square Terminal checkout' },
-      { permission_name: 'payments:read', resource: 'payments', action: 'read', description: 'Poll checkout status' },
-      { permission_name: 'payments:update', resource: 'payments', action: 'update', description: 'Cancel a checkout' },
-    ];
+    // Seed all permissions from the role-permission matrix
+    const permissionIds = await seedPermissions(client);
+    logger.info('Seeded all permissions');
 
-    const permissionIds: Record<string, number> = {};
-    for (const perm of paymentsPermissions) {
-      const permResult = await client.query(`
-        INSERT INTO permissions (permission_name, resource, action, description)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (permission_name) DO UPDATE SET description = EXCLUDED.description
-        RETURNING id
-      `, [perm.permission_name, perm.resource, perm.action, perm.description]);
-      permissionIds[perm.permission_name] = permResult.rows[0].id;
-    }
-    logger.info('Created payments permissions');
-
-    // Assign permissions to roles
-    // Admin and Manager: all payments permissions; Cashier: create and read only
-    const rolePermissionMappings = [
-      { roleName: 'Admin', permissionName: 'payments:create' },
-      { roleName: 'Admin', permissionName: 'payments:read' },
-      { roleName: 'Admin', permissionName: 'payments:update' },
-      { roleName: 'Manager', permissionName: 'payments:create' },
-      { roleName: 'Manager', permissionName: 'payments:read' },
-      { roleName: 'Manager', permissionName: 'payments:update' },
-      { roleName: 'Cashier', permissionName: 'payments:create' },
-      { roleName: 'Cashier', permissionName: 'payments:read' },
-    ];
-
-    for (const mapping of rolePermissionMappings) {
-      await client.query(`
-        INSERT INTO role_permissions (role_id, permission_id)
-        VALUES ($1, $2)
-        ON CONFLICT DO NOTHING
-      `, [roleIds[mapping.roleName], permissionIds[mapping.permissionName]]);
-    }
+    // Assign cumulative permissions to each role
+    await seedRolePermissions(client, permissionIds);
     logger.info('Assigned permissions to roles');
 
     // Create admin employee record (links auth user to RBAC role)
