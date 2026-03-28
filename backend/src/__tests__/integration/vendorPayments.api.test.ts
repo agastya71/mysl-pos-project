@@ -183,3 +183,114 @@ describe('POST /api/v1/vendor-payments', () => {
     expect(res.body.error.message).toBe('Validation error');
   });
 });
+
+describe('POST /api/v1/vendor-payments/:id/approve', () => {
+  it('should approve a pending payment', async () => {
+    const pendingPayment = {
+      id: PAYMENT_ID, payment_number: 'PMT-2026-0001', vendor_id: VENDOR_ID,
+      status: 'pending', total_amount: '500.00',
+      payment_date: '2026-03-28', payment_method: 'check',
+      reference_number: null, memo: null, approved_by: null, approved_at: null,
+      created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z',
+    };
+    const approvedPayment = {
+      ...pendingPayment, status: 'cleared',
+      approved_by: USER_ID, approved_at: '2026-03-28T01:00:00Z',
+    };
+
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [pendingPayment], rowCount: 1 }) // fetch payment
+      .mockResolvedValueOnce({ rows: [approvedPayment], rowCount: 1 }); // UPDATE
+
+    const res = await request(app)
+      .post(`/api/v1/vendor-payments/${PAYMENT_ID}/approve`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('cleared');
+    expect(res.body.data.approved_by).toBe(USER_ID);
+  });
+
+  it('should return 400 when payment is not pending', async () => {
+    const clearedPayment = {
+      id: PAYMENT_ID, status: 'cleared', vendor_id: VENDOR_ID,
+      payment_number: 'PMT-2026-0001', total_amount: '500.00',
+      payment_date: '2026-03-28', payment_method: 'check',
+      reference_number: null, memo: null, approved_by: USER_ID,
+      approved_at: '2026-03-28T01:00:00Z',
+      created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z',
+    };
+
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [clearedPayment], rowCount: 1 }); // fetch — cleared
+
+    const res = await request(app)
+      .post(`/api/v1/vendor-payments/${PAYMENT_ID}/approve`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/only pending payments can be approved/i);
+  });
+
+  it('should return 404 when payment not found', async () => {
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // not found
+
+    const res = await request(app)
+      .post(`/api/v1/vendor-payments/${PAYMENT_ID}/approve`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.message).toMatch(/payment not found/i);
+  });
+});
+
+describe('POST /api/v1/vendor-payments/:id/void', () => {
+  it('should void a cleared payment and reverse AP balances', async () => {
+    const clearedPayment = {
+      id: PAYMENT_ID, vendor_id: VENDOR_ID, status: 'cleared',
+      total_amount: '500.00', payment_number: 'PMT-2026-0001',
+      payment_date: '2026-03-28', payment_method: 'check',
+      reference_number: null, memo: null, approved_by: USER_ID,
+      approved_at: '2026-03-28T01:00:00Z',
+      created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z',
+    };
+    const allocations = [{ ap_invoice_id: AP_ID, allocated_amount: '500.00' }];
+    const voidedPayment = { ...clearedPayment, status: 'void' };
+
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
+      .mockResolvedValueOnce({ rows: [clearedPayment], rowCount: 1 }) // fetch payment
+      .mockResolvedValueOnce({ rows: allocations, rowCount: 1 }) // fetch allocations
+      // updateAPBalance: lock AP row
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID, amount_paid: '500.00', amount_due: '500.00', status: 'partial', invoice_amount: '1000.00', vendor_id: VENDOR_ID }], rowCount: 1 })
+      // updateAPBalance: UPDATE
+      .mockResolvedValueOnce({ rows: [{ id: AP_ID, amount_paid: '0.00', amount_due: '1000.00', status: 'open', invoice_amount: '1000.00' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // vendor balance restore
+      .mockResolvedValueOnce({ rows: [voidedPayment], rowCount: 1 }) // UPDATE payment void
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // COMMIT
+
+    const res = await request(app)
+      .post(`/api/v1/vendor-payments/${PAYMENT_ID}/void`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('void');
+  });
+
+  it('should return 400 when payment is already void', async () => {
+    const voidedPayment = {
+      id: PAYMENT_ID, status: 'void', vendor_id: VENDOR_ID,
+      payment_number: 'PMT-2026-0001', total_amount: '500.00',
+      payment_date: '2026-03-28', payment_method: 'check',
+      reference_number: null, memo: null, approved_by: null, approved_at: null,
+      created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z',
+    };
+
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
+      .mockResolvedValueOnce({ rows: [voidedPayment], rowCount: 1 }); // fetch — already void
+
+    const res = await request(app)
+      .post(`/api/v1/vendor-payments/${PAYMENT_ID}/void`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/payment cannot be voided/i);
+  });
+});

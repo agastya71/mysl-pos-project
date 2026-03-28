@@ -157,16 +157,84 @@ export async function batchPayments(
   }
 }
 
-// Stubs for later tasks
 export async function approvePayment(
   paymentId: string,
   userId: string
 ): Promise<VendorPayment> {
-  throw new Error('Not yet implemented');
+  const fetchResult = await pool.query(
+    'SELECT * FROM vendor_payments WHERE id = $1',
+    [paymentId]
+  );
+  if (fetchResult.rowCount === 0) {
+    throw new Error('Payment not found');
+  }
+  const payment = fetchResult.rows[0] as VendorPayment;
+  if (payment.status !== 'pending') {
+    throw new Error('Only pending payments can be approved');
+  }
+
+  const updateResult = await pool.query(
+    `UPDATE vendor_payments
+     SET status = 'cleared', approved_by = $1, approved_at = NOW(), updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+    [userId, paymentId]
+  );
+  return updateResult.rows[0] as VendorPayment;
 }
 
 export async function voidPayment(paymentId: string): Promise<VendorPayment> {
-  throw new Error('Not yet implemented');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const fetchResult = await client.query(
+      'SELECT * FROM vendor_payments WHERE id = $1',
+      [paymentId]
+    );
+    if (fetchResult.rowCount === 0) {
+      throw new Error('Payment not found');
+    }
+    const payment = fetchResult.rows[0] as VendorPayment;
+    if (payment.status === 'void' || payment.status === 'cancelled') {
+      throw new Error('Payment cannot be voided');
+    }
+
+    // Fetch allocations to reverse
+    const allocResult = await client.query(
+      'SELECT ap_invoice_id, allocated_amount FROM payment_allocations WHERE payment_id = $1',
+      [paymentId]
+    );
+
+    let totalReversed = 0;
+    for (const alloc of allocResult.rows) {
+      const amount = parseFloat(alloc.allocated_amount);
+      await updateAPBalance(client, alloc.ap_invoice_id, -amount);
+      totalReversed += amount;
+    }
+
+    // Restore vendor balance
+    if (totalReversed > 0) {
+      await client.query(
+        'UPDATE vendors SET current_balance = current_balance + $1 WHERE id = $2',
+        [totalReversed, payment.vendor_id]
+      );
+    }
+
+    // Mark payment void
+    const updateResult = await client.query(
+      `UPDATE vendor_payments SET status = 'void', updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [paymentId]
+    );
+
+    await client.query('COMMIT');
+    return updateResult.rows[0] as VendorPayment;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function listPayments(query: VPListQuery): Promise<VPListResult> {

@@ -82,9 +82,33 @@ export async function updatePayment(req: Request, res: Response): Promise<void> 
 }
 
 export async function approvePayment(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  const { id } = req.params;
+  try {
+    const payment = await vpService.approvePayment(id, req.user!.userId);
+    res.status(200).json({ success: true, data: payment });
+  } catch (err: any) {
+    if (err.message?.toLowerCase().includes('not found')) {
+      res.status(404).json({ success: false, error: { message: err.message } });
+    } else if (err.message) {
+      res.status(400).json({ success: false, error: { message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+    }
+  }
 }
 
 export async function voidPayment(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  const { id } = req.params;
+  try {
+    const payment = await vpService.voidPayment(id);
+    res.status(200).json({ success: true, data: payment });
+  } catch (err: any) {
+    if (err.message?.toLowerCase().includes('not found')) {
+      res.status(404).json({ success: false, error: { message: err.message } });
+    } else if (err.message) {
+      res.status(400).json({ success: false, error: { message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+    }
+  }
 }
