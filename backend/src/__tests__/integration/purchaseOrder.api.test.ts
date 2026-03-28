@@ -579,20 +579,19 @@ describe('Purchase Order API Integration Tests', () => {
   });
 
   describe('POST /api/v1/purchase-orders/:id/close', () => {
-    // TODO: Fix timeout issue - test logic is correct but timing out
-    // Service layer fully tested (31/31 tests passing)
-    it.skip('should close fully received PO', async () => {
+    it('should close fully received PO', async () => {
       const mockPO = {
         id: 'po-123',
         status: 'closed',
       };
 
-      (pool.query as jest.Mock)
-        .mockResolvedValueOnce({ rows: [{ status: 'received' }], rowCount: 1 }) // Check status
-        .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE
-        // Mock for getPOById
-        .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      // closePO uses pool.connect()→client.query() for status check + UPDATE,
+      // then calls getPOById() which also uses pool.connect()→client.query()
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [{ status: 'received' }], rowCount: 1 }) // closePO: SELECT status
+        .mockResolvedValueOnce({ rowCount: 1 }) // closePO: UPDATE
+        .mockResolvedValueOnce({ rows: [mockPO], rowCount: 1 }) // getPOById: SELECT po.*
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // getPOById: SELECT items
 
       const response = await request(app)
         .post('/api/v1/purchase-orders/po-123/close')
@@ -602,9 +601,10 @@ describe('Purchase Order API Integration Tests', () => {
       expect(response.body.data.status).toBe('closed');
     });
 
-    // TODO: Fix timeout issue
-    it.skip('should return 400 if PO not fully received', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ status: 'partially_received' }], rowCount: 1 });
+    it('should return 400 if PO not fully received', async () => {
+      // closePO uses pool.connect()→client.query() for the status check
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [{ status: 'partially_received' }], rowCount: 1 });
 
       const response = await request(app)
         .post('/api/v1/purchase-orders/po-123/close')
@@ -615,8 +615,7 @@ describe('Purchase Order API Integration Tests', () => {
   });
 
   describe('GET /api/v1/purchase-orders/reorder-suggestions', () => {
-    // TODO: Fix timeout issue - endpoint works, service layer fully tested
-    it.skip('should return low stock products grouped by vendor', async () => {
+    it('should return low stock products grouped by vendor', async () => {
       const mockProducts = [
         {
           vendor_id: 'vendor-1',
@@ -640,8 +639,7 @@ describe('Purchase Order API Integration Tests', () => {
       expect(response.body.data[0].vendor_id).toBe('vendor-1');
     });
 
-    // TODO: Fix timeout issue
-    it.skip('should return empty array if no low stock products', async () => {
+    it('should return empty array if no low stock products', async () => {
       (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
       const response = await request(app)
