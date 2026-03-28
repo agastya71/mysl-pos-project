@@ -308,3 +308,65 @@ describe('POST /api/v1/accounts-payable/:id/cancel', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('GET /api/v1/accounts-payable/aging-report', () => {
+  it('should return aging report grouped by vendor', async () => {
+    const agingRows = [
+      {
+        vendor_id: VENDOR_ID,
+        vendor_number: 'VEND-000001',
+        business_name: 'Test Vendor',
+        current_amount: '500.00',
+        days_1_30: '200.00',
+        days_31_60: '0.00',
+        days_61_90: '0.00',
+        days_90_plus: '0.00',
+        total: '700.00',
+      },
+    ];
+
+    (pool.query as jest.Mock).mockResolvedValueOnce({ rows: agingRows, rowCount: 1 });
+
+    const res = await request(app).get('/api/v1/accounts-payable/aging-report');
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.vendors).toHaveLength(1);
+    expect(res.body.data.totals).toBeDefined();
+    expect(res.body.data.as_of_date).toBeDefined();
+  });
+});
+
+describe('GET /api/v1/accounts-payable/due-this-week', () => {
+  it('should return invoices due within 7 days', async () => {
+    const dueInvoices = [
+      {
+        id: AP_ID, ap_number: 'AP-2026-0001', vendor_id: VENDOR_ID,
+        invoice_date: '2026-03-01', due_date: '2026-03-30',
+        status: 'open', invoice_amount: '1000.00', amount_paid: '0.00',
+        amount_due: '1000.00', discount_available: '0.00', discount_date: null,
+        payment_terms: 'Net 30', notes: null, internal_notes: null,
+        purchase_order_id: null, invoice_number: null, created_by: USER_ID,
+        created_at: '2026-03-01T00:00:00Z', updated_at: '2026-03-01T00:00:00Z',
+      },
+    ];
+
+    (pool.query as jest.Mock).mockResolvedValueOnce({ rows: dueInvoices, rowCount: 1 });
+
+    const res = await request(app).get('/api/v1/accounts-payable/due-this-week');
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].id).toBe(AP_ID);
+  });
+
+  it('should return empty array when no invoices due', async () => {
+    (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const res = await request(app).get('/api/v1/accounts-payable/due-this-week');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(0);
+  });
+});

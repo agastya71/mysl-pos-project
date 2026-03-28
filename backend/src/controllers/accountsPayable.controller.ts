@@ -120,10 +120,22 @@ export async function cancelInvoice(req: Request, res: Response): Promise<void> 
   }
 }
 
-// Stubs — implemented in Task 5
 export async function getAgingReport(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  try {
+    const vendorId = req.query.vendor_id as string | undefined;
+    const asOfDate = req.query.as_of_date as string | undefined;
+    const report = await apService.getAgingReport(vendorId, asOfDate);
+    res.status(200).json({ success: true, data: report });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+  }
 }
+
 export async function getDueThisWeek(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  try {
+    const invoices = await apService.getDueThisWeek();
+    res.status(200).json({ success: true, data: invoices });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+  }
 }

@@ -328,3 +328,69 @@ export async function cancelInvoice(
     client.release();
   }
 }
+
+export async function getAgingReport(
+  vendorId?: string,
+  asOfDate?: string
+): Promise<AgingReport> {
+  const asOf = asOfDate || new Date().toISOString().split('T')[0];
+  const params: unknown[] = [asOf, asOf, asOf, asOf, asOf];
+  const vendorCondition = vendorId ? `AND ap.vendor_id = $6` : '';
+  if (vendorId) params.push(vendorId);
+
+  const result = await pool.query(
+    `SELECT
+       v.id AS vendor_id,
+       v.vendor_number,
+       v.business_name,
+       COALESCE(SUM(CASE WHEN ap.due_date >= $1::date THEN ap.amount_due ELSE 0 END), 0) AS current_amount,
+       COALESCE(SUM(CASE WHEN ap.due_date BETWEEN $2::date - INTERVAL '30 days' AND $2::date - INTERVAL '1 day' THEN ap.amount_due ELSE 0 END), 0) AS days_1_30,
+       COALESCE(SUM(CASE WHEN ap.due_date BETWEEN $3::date - INTERVAL '60 days' AND $3::date - INTERVAL '31 days' THEN ap.amount_due ELSE 0 END), 0) AS days_31_60,
+       COALESCE(SUM(CASE WHEN ap.due_date BETWEEN $4::date - INTERVAL '90 days' AND $4::date - INTERVAL '61 days' THEN ap.amount_due ELSE 0 END), 0) AS days_61_90,
+       COALESCE(SUM(CASE WHEN ap.due_date < $5::date - INTERVAL '90 days' THEN ap.amount_due ELSE 0 END), 0) AS days_90_plus,
+       COALESCE(SUM(ap.amount_due), 0) AS total
+     FROM vendors v
+     JOIN accounts_payable ap ON ap.vendor_id = v.id
+     WHERE ap.status IN ('open', 'partial', 'overdue')
+     ${vendorCondition}
+     GROUP BY v.id, v.vendor_number, v.business_name
+     ORDER BY v.business_name`,
+    params
+  );
+
+  const vendors = result.rows.map((r: any) => ({
+    vendor_id: r.vendor_id,
+    vendor_number: r.vendor_number,
+    business_name: r.business_name,
+    current: parseFloat(r.current_amount),
+    days_1_30: parseFloat(r.days_1_30),
+    days_31_60: parseFloat(r.days_31_60),
+    days_61_90: parseFloat(r.days_61_90),
+    days_90_plus: parseFloat(r.days_90_plus),
+    total: parseFloat(r.total),
+  }));
+
+  const totals = vendors.reduce(
+    (acc, v) => ({
+      current: acc.current + v.current,
+      days_1_30: acc.days_1_30 + v.days_1_30,
+      days_31_60: acc.days_31_60 + v.days_31_60,
+      days_61_90: acc.days_61_90 + v.days_61_90,
+      days_90_plus: acc.days_90_plus + v.days_90_plus,
+      grand_total: acc.grand_total + v.total,
+    }),
+    { current: 0, days_1_30: 0, days_31_60: 0, days_61_90: 0, days_90_plus: 0, grand_total: 0 }
+  );
+
+  return { as_of_date: asOf, vendors, totals };
+}
+
+export async function getDueThisWeek(): Promise<APInvoice[]> {
+  const result = await pool.query(
+    `SELECT * FROM accounts_payable
+     WHERE due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+       AND status IN ('open', 'partial', 'overdue')
+     ORDER BY due_date ASC`
+  );
+  return result.rows as APInvoice[];
+}
