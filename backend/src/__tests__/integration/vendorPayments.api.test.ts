@@ -294,3 +294,106 @@ describe('POST /api/v1/vendor-payments/:id/void', () => {
     expect(res.body.error.message).toMatch(/payment cannot be voided/i);
   });
 });
+
+describe('GET /api/v1/vendor-payments', () => {
+  it('should list payments with pagination', async () => {
+    const payments = [{
+      id: PAYMENT_ID, payment_number: 'PMT-2026-0001', vendor_id: VENDOR_ID,
+      payment_date: '2026-03-28', payment_method: 'check',
+      total_amount: '500.00', status: 'pending',
+      reference_number: null, memo: null, approved_by: null, approved_at: null,
+      created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z',
+    }];
+
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '1' }], rowCount: 1 }) // count query
+      .mockResolvedValueOnce({ rows: payments, rowCount: 1 }); // data query
+
+    const res = await request(app).get('/api/v1/vendor-payments?page=1&limit=20');
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.payments).toHaveLength(1);
+    expect(res.body.data.total).toBe(1);
+    expect(res.body.data.page).toBe(1);
+  });
+
+  it('should filter by vendorId', async () => {
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const res = await request(app).get(`/api/v1/vendor-payments?vendor_id=${VENDOR_ID}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.payments).toHaveLength(0);
+  });
+
+  it('should filter by status', async () => {
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const res = await request(app).get('/api/v1/vendor-payments?status=cleared');
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('GET /api/v1/vendor-payments/:id', () => {
+  it('should return payment with allocations', async () => {
+    const rows = [{
+      id: PAYMENT_ID, payment_number: 'PMT-2026-0001', vendor_id: VENDOR_ID,
+      payment_date: '2026-03-28', payment_method: 'check',
+      total_amount: '500.00', status: 'pending',
+      reference_number: null, memo: null, approved_by: null, approved_at: null,
+      created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z',
+      vendor_number: 'VEND-000001', business_name: 'Test Vendor',
+      alloc_id: 'alloc-1', ap_invoice_id: AP_ID, ap_number: 'AP-2026-0001',
+      invoice_number: null, allocated_amount: '500.00', discount_taken: '0.00',
+    }];
+
+    (pool.query as jest.Mock).mockResolvedValueOnce({ rows, rowCount: 1 });
+
+    const res = await request(app).get(`/api/v1/vendor-payments/${PAYMENT_ID}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(PAYMENT_ID);
+    expect(res.body.data.allocations).toBeDefined();
+    expect(res.body.data.allocations).toHaveLength(1);
+  });
+
+  it('should return 404 when not found', async () => {
+    (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const res = await request(app).get(`/api/v1/vendor-payments/${PAYMENT_ID}`);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('PUT /api/v1/vendor-payments/:id', () => {
+  it('should update editable fields', async () => {
+    const existing = {
+      id: PAYMENT_ID, status: 'pending', vendor_id: VENDOR_ID,
+      payment_number: 'PMT-2026-0001', total_amount: '500.00',
+      payment_date: '2026-03-28', payment_method: 'check',
+      reference_number: null, memo: null, approved_by: null, approved_at: null,
+      created_by: USER_ID, created_at: '2026-03-28T00:00:00Z', updated_at: '2026-03-28T00:00:00Z',
+    };
+    const updated = { ...existing, memo: 'Invoice batch March', reference_number: 'CHK-1001' };
+
+    (pool.query as jest.Mock)
+      .mockResolvedValueOnce({ rows: [existing], rowCount: 1 }) // fetch
+      .mockResolvedValueOnce({ rows: [updated], rowCount: 1 }); // UPDATE
+
+    const res = await request(app)
+      .put(`/api/v1/vendor-payments/${PAYMENT_ID}`)
+      .send({ memo: 'Invoice batch March', reference_number: 'CHK-1001' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.memo).toBe('Invoice batch March');
+  });
+
+  it('should return 400 with empty body', async () => {
+    const res = await request(app).put(`/api/v1/vendor-payments/${PAYMENT_ID}`).send({});
+    expect(res.status).toBe(400);
+  });
+});

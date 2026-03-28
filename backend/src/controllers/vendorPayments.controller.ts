@@ -68,17 +68,52 @@ export async function batchPayments(req: Request, res: Response): Promise<void> 
   }
 }
 
-// Stubs — implemented in Tasks 3 and 4
 export async function listPayments(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  try {
+    const query = {
+      vendor_id: req.query.vendor_id as string | undefined,
+      status: req.query.status as string | undefined,
+      start_date: req.query.start_date as string | undefined,
+      end_date: req.query.end_date as string | undefined,
+      page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 20,
+    };
+    const result = await vpService.listPayments(query);
+    res.status(200).json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+  }
 }
 
 export async function getPayment(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  try {
+    const payment = await vpService.getPayment(req.params.id);
+    res.status(200).json({ success: true, data: payment });
+  } catch (err: any) {
+    if (err.message?.toLowerCase().includes('not found')) {
+      res.status(404).json({ success: false, error: { message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+    }
+  }
 }
 
 export async function updatePayment(req: Request, res: Response): Promise<void> {
-  res.status(501).json({ success: false, error: { message: 'Not yet implemented' } });
+  const parsed = UpdatePaymentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: { message: 'Validation error', details: parsed.error.issues } });
+    return;
+  }
+  try {
+    const payment = await vpService.updatePayment(req.params.id, parsed.data);
+    res.status(200).json({ success: true, data: payment });
+  } catch (err: any) {
+    if (err.message?.toLowerCase().includes('not found')) {
+      res.status(404).json({ success: false, error: { message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { message: 'Internal server error' } });
+    }
+  }
 }
 
 export async function approvePayment(req: Request, res: Response): Promise<void> {

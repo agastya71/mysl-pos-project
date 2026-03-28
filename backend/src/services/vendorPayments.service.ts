@@ -238,16 +238,140 @@ export async function voidPayment(paymentId: string): Promise<VendorPayment> {
 }
 
 export async function listPayments(query: VPListQuery): Promise<VPListResult> {
-  throw new Error('Not yet implemented');
+  const {
+    vendor_id,
+    status,
+    start_date,
+    end_date,
+    page = 1,
+    limit = 20,
+  } = query;
+
+  const offset = (page - 1) * limit;
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let i = 1;
+
+  if (vendor_id) { conditions.push(`vendor_id = $${i++}`); params.push(vendor_id); }
+  if (status) { conditions.push(`status = $${i++}`); params.push(status); }
+  if (start_date) { conditions.push(`payment_date >= $${i++}`); params.push(start_date); }
+  if (end_date) { conditions.push(`payment_date <= $${i++}`); params.push(end_date); }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const countResult = await pool.query(
+    `SELECT COUNT(*) FROM vendor_payments ${where}`,
+    params
+  );
+  const total = parseInt(countResult.rows[0].count, 10);
+
+  const dataResult = await pool.query(
+    `SELECT * FROM vendor_payments ${where}
+     ORDER BY payment_date DESC, created_at DESC
+     LIMIT $${i++} OFFSET $${i++}`,
+    [...params, limit, offset]
+  );
+
+  const totalAmount = dataResult.rows.reduce(
+    (sum: number, p: any) => sum + parseFloat(p.total_amount || '0'),
+    0
+  );
+
+  return {
+    payments: dataResult.rows as VendorPayment[],
+    total,
+    total_amount: totalAmount,
+    page,
+    pages: Math.ceil(total / limit),
+  };
 }
 
 export async function getPayment(paymentId: string): Promise<VendorPaymentWithAllocations> {
-  throw new Error('Not yet implemented');
+  const result = await pool.query(
+    `SELECT
+       vp.*,
+       v.vendor_number, v.business_name,
+       pa.id AS alloc_id,
+       pa.ap_invoice_id,
+       ap.ap_number,
+       ap.invoice_number,
+       pa.allocated_amount,
+       pa.discount_taken
+     FROM vendor_payments vp
+     JOIN vendors v ON v.id = vp.vendor_id
+     LEFT JOIN payment_allocations pa ON pa.payment_id = vp.id
+     LEFT JOIN accounts_payable ap ON ap.id = pa.ap_invoice_id
+     WHERE vp.id = $1`,
+    [paymentId]
+  );
+
+  if (result.rowCount === 0) {
+    throw new Error('Payment not found');
+  }
+
+  const first = result.rows[0];
+  const payment: VendorPaymentWithAllocations = {
+    id: first.id,
+    payment_number: first.payment_number,
+    vendor_id: first.vendor_id,
+    payment_date: first.payment_date,
+    payment_method: first.payment_method,
+    reference_number: first.reference_number,
+    total_amount: first.total_amount,
+    status: first.status,
+    memo: first.memo,
+    approved_by: first.approved_by,
+    approved_at: first.approved_at,
+    created_by: first.created_by,
+    created_at: first.created_at,
+    updated_at: first.updated_at,
+    vendor: {
+      id: first.vendor_id,
+      vendor_number: first.vendor_number,
+      business_name: first.business_name,
+    },
+    allocations: result.rows
+      .filter((r: any) => r.alloc_id !== null)
+      .map((r: any) => ({
+        id: r.alloc_id,
+        ap_invoice_id: r.ap_invoice_id,
+        ap_number: r.ap_number,
+        invoice_number: r.invoice_number,
+        allocated_amount: r.allocated_amount,
+        discount_taken: r.discount_taken,
+      })),
+  };
+
+  return payment;
 }
 
 export async function updatePayment(
   paymentId: string,
   data: UpdatePaymentInput
 ): Promise<VendorPayment> {
-  throw new Error('Not yet implemented');
+  const existing = await pool.query(
+    'SELECT * FROM vendor_payments WHERE id = $1',
+    [paymentId]
+  );
+  if (existing.rowCount === 0) {
+    throw new Error('Payment not found');
+  }
+
+  const setClauses: string[] = [];
+  const params: unknown[] = [];
+  let i = 1;
+
+  if (data.payment_date !== undefined) { setClauses.push(`payment_date = $${i++}`); params.push(data.payment_date); }
+  if (data.payment_method !== undefined) { setClauses.push(`payment_method = $${i++}`); params.push(data.payment_method); }
+  if (data.reference_number !== undefined) { setClauses.push(`reference_number = $${i++}`); params.push(data.reference_number); }
+  if (data.memo !== undefined) { setClauses.push(`memo = $${i++}`); params.push(data.memo); }
+
+  setClauses.push(`updated_at = NOW()`);
+  params.push(paymentId);
+
+  const result = await pool.query(
+    `UPDATE vendor_payments SET ${setClauses.join(', ')} WHERE id = $${i} RETURNING *`,
+    params
+  );
+  return result.rows[0] as VendorPayment;
 }
