@@ -7,29 +7,34 @@ describe('Permission seed matrix', () => {
 
   beforeAll(async () => {
     client = await pool.connect();
-    await client.query('BEGIN');
+    try {
+      await client.query('BEGIN');
 
-    // Ensure the three roles exist (idempotent — seed may not have run)
-    for (const [roleName, description] of [
-      ['Admin', 'Full system access'],
-      ['Manager', 'Store operations and approvals'],
-      ['Cashier', 'Sales transactions only'],
-    ] as [string, string][]) {
-      await client.query(
-        `INSERT INTO roles (role_name, description, is_active)
-         VALUES ($1, $2, true)
-         ON CONFLICT (role_name) DO NOTHING`,
-        [roleName, description],
-      );
+      // Ensure the three roles exist (idempotent — seed may not have run)
+      for (const [roleName, description] of [
+        ['Admin', 'Full system access'],
+        ['Manager', 'Store operations and approvals'],
+        ['Cashier', 'Sales transactions only'],
+      ] as [string, string][]) {
+        await client.query(
+          `INSERT INTO roles (role_name, description, is_active)
+           VALUES ($1, $2, true)
+           ON CONFLICT (role_name) DO NOTHING`,
+          [roleName, description],
+        );
+      }
+
+      // Clear and re-seed so the test is isolated
+      await client.query('DELETE FROM role_permissions');
+      await client.query('DELETE FROM permissions');
+
+      const permissionIds = await seedPermissions(client);
+      await seedRolePermissions(client, permissionIds);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     }
-
-    // Clear and re-seed so the test is isolated
-    await client.query('DELETE FROM role_permissions');
-    await client.query('DELETE FROM permissions');
-
-    const permissionIds = await seedPermissions(client);
-    await seedRolePermissions(client, permissionIds);
-    await client.query('COMMIT');
   }, 30000);
 
   afterAll(async () => {
