@@ -117,8 +117,7 @@ export class CustomerService {
     const result = await pool.query(
       `SELECT
         id, customer_number, first_name, last_name, email, phone,
-        address_line1, address_line2, city, state, postal_code, country,
-        loyalty_points, total_spent, total_transactions,
+        loyalty_points, total_spent,
         is_active, created_at, updated_at
       FROM customers
       ${whereClause}
@@ -162,8 +161,7 @@ export class CustomerService {
     const result = await pool.query(
       `SELECT
         id, customer_number, first_name, last_name, email, phone,
-        address_line1, address_line2, city, state, postal_code, country,
-        loyalty_points, total_spent, total_transactions,
+        loyalty_points, total_spent,
         is_active, created_at, updated_at
       FROM customers
       WHERE id = $1`,
@@ -248,26 +246,18 @@ export class CustomerService {
     // Database trigger will automatically generate customer_number
     const result = await pool.query(
       `INSERT INTO customers (
-        first_name, last_name, email, phone,
-        address_line1, address_line2, city, state, postal_code, country
+        first_name, last_name, email, phone
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4)
       RETURNING
         id, customer_number, first_name, last_name, email, phone,
-        address_line1, address_line2, city, state, postal_code, country,
-        loyalty_points, total_spent, total_transactions,
+        loyalty_points, total_spent,
         is_active, created_at, updated_at`,
       [
         input.first_name,
         input.last_name,
         input.email || null,
         input.phone || null,
-        input.address_line1 || null,
-        input.address_line2 || null,
-        input.city || null,
-        input.state || null,
-        input.postal_code || null,
-        input.country || 'USA',
       ]
     );
 
@@ -371,42 +361,6 @@ export class CustomerService {
       paramIndex++;
     }
 
-    if (input.address_line1 !== undefined) {
-      updates.push(`address_line1 = $${paramIndex}`);
-      values.push(input.address_line1 || null);
-      paramIndex++;
-    }
-
-    if (input.address_line2 !== undefined) {
-      updates.push(`address_line2 = $${paramIndex}`);
-      values.push(input.address_line2 || null);
-      paramIndex++;
-    }
-
-    if (input.city !== undefined) {
-      updates.push(`city = $${paramIndex}`);
-      values.push(input.city || null);
-      paramIndex++;
-    }
-
-    if (input.state !== undefined) {
-      updates.push(`state = $${paramIndex}`);
-      values.push(input.state || null);
-      paramIndex++;
-    }
-
-    if (input.postal_code !== undefined) {
-      updates.push(`postal_code = $${paramIndex}`);
-      values.push(input.postal_code || null);
-      paramIndex++;
-    }
-
-    if (input.country !== undefined) {
-      updates.push(`country = $${paramIndex}`);
-      values.push(input.country || 'USA');
-      paramIndex++;
-    }
-
     if (input.is_active !== undefined) {
       updates.push(`is_active = $${paramIndex}`);
       values.push(input.is_active);
@@ -428,8 +382,7 @@ export class CustomerService {
       WHERE id = $${paramIndex}
       RETURNING
         id, customer_number, first_name, last_name, email, phone,
-        address_line1, address_line2, city, state, postal_code, country,
-        loyalty_points, total_spent, total_transactions,
+        loyalty_points, total_spent,
         is_active, created_at, updated_at`,
       values
     );
