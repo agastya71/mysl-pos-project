@@ -49,6 +49,31 @@ export const AppLayout: React.FC = () => {
             <NavLink to="/transactions">Transactions</NavLink>
             <NavLink to="/users">Users</NavLink>
             <NavLink to="/reports">Reports</NavLink>
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: '700', color: '#6c757d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Finance
+              </div>
+              <RouterNavLink
+                to="/finance/accounts-payable"
+                style={({ isActive }) => ({
+                  ...styles.navLink,
+                  ...(isActive ? styles.navLinkActive : {}),
+                  paddingLeft: '24px',
+                })}
+              >
+                Accounts Payable
+              </RouterNavLink>
+              <RouterNavLink
+                to="/finance/vendor-payments"
+                style={({ isActive }) => ({
+                  ...styles.navLink,
+                  ...(isActive ? styles.navLinkActive : {}),
+                  paddingLeft: '24px',
+                })}
+              >
+                Vendor Payments
+              </RouterNavLink>
+            </div>
           </nav>
         </aside>
         <main style={styles.main}>
