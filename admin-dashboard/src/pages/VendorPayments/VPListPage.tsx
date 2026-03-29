@@ -7,6 +7,7 @@ import type { VendorPayment } from '../../types/vendorPayments.types';
 import ApprovePaymentModal from './ApprovePaymentModal';
 import VoidPaymentModal from './VoidPaymentModal';
 import VPCreateModal from './VPCreateModal';
+import VPDetailModal from './VPDetailModal';
 
 const statusColors: Record<VendorPayment['status'], string> = {
   pending: '#f59e0b', cleared: '#16a34a', void: '#94a3b8', cancelled: '#ef4444',
@@ -33,7 +34,9 @@ export default function VPListPage() {
   const vendors = useSelector((s: RootState) => s.accountsPayable.vendors);
   const [approveTarget, setApproveTarget] = useState<VendorPayment | null>(null);
   const [voidTarget, setVoidTarget] = useState<VendorPayment | null>(null);
+  const [viewTarget, setViewTarget] = useState<VendorPayment | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [filters, setFilters] = useState({ vendor_id: '', status: '', start_date: '', end_date: '', payment_method: '' });
 
   useEffect(() => { dispatch(fetchVendorPayments({ page, limit })); }, [dispatch, page, limit]);
 
@@ -55,6 +58,31 @@ export default function VPListPage() {
           <button style={styles.btn('#64748b')} onClick={() => navigate('/finance/vendor-payments/batch')}>Batch Payment</button>
           <button style={styles.btn('#3b82f6')} onClick={() => setShowCreate(true)}>+ New Payment</button>
         </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' as const }}>
+        <select value={filters.vendor_id} onChange={e => { const v = e.target.value; setFilters(f => ({...f, vendor_id: v})); dispatch(fetchVendorPayments({ vendor_id: v || undefined, page: 1, limit })); }} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }}>
+          <option value="">All Vendors</option>
+          {vendors.map(v => <option key={v.id} value={v.id}>{v.business_name}</option>)}
+        </select>
+        <select value={filters.status} onChange={e => { const v = e.target.value; setFilters(f => ({...f, status: v})); dispatch(fetchVendorPayments({ status: v || undefined, page: 1, limit })); }} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }}>
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="cleared">Cleared</option>
+          <option value="void">Void</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select value={filters.payment_method} onChange={e => { const v = e.target.value; setFilters(f => ({...f, payment_method: v})); dispatch(fetchVendorPayments({ page: 1, limit })); }} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }}>
+          <option value="">All Methods</option>
+          <option value="check">Check</option>
+          <option value="ach">ACH</option>
+          <option value="wire">Wire</option>
+          <option value="credit_card">Credit Card</option>
+          <option value="cash">Cash</option>
+          <option value="other">Other</option>
+        </select>
+        <input type="date" value={filters.start_date} onChange={e => { const v = e.target.value; setFilters(f => ({...f, start_date: v})); dispatch(fetchVendorPayments({ start_date: v || undefined, page: 1, limit })); }} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
+        <input type="date" value={filters.end_date} onChange={e => { const v = e.target.value; setFilters(f => ({...f, end_date: v})); dispatch(fetchVendorPayments({ end_date: v || undefined, page: 1, limit })); }} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }} />
       </div>
 
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '16px', color: '#dc2626' }}>{error}</div>}
@@ -91,6 +119,7 @@ export default function VPListPage() {
                   </td>
                   <td style={styles.td}>{p.payment_date}</td>
                   <td style={styles.td}>
+                    <button style={styles.actionBtn('#475569')} onClick={() => setViewTarget(p)}>View</button>
                     {p.status === 'pending' && <button style={styles.actionBtn('#16a34a')} onClick={() => setApproveTarget(p)}>Approve</button>}
                     {(p.status === 'pending' || p.status === 'cleared') && <button style={styles.actionBtn('#ef4444')} onClick={() => setVoidTarget(p)}>Void</button>}
                   </td>
@@ -110,6 +139,7 @@ export default function VPListPage() {
       {approveTarget && <ApprovePaymentModal payment={approveTarget} vendorName={vendorMap.get(approveTarget.vendor_id) ?? approveTarget.vendor_id} onClose={() => setApproveTarget(null)} onSuccess={handleSuccess} />}
       {voidTarget && <VoidPaymentModal payment={voidTarget} vendorName={vendorMap.get(voidTarget.vendor_id) ?? voidTarget.vendor_id} onClose={() => setVoidTarget(null)} onSuccess={handleSuccess} />}
       {showCreate && <VPCreateModal onClose={() => setShowCreate(false)} onSuccess={handleSuccess} />}
+      {viewTarget && <VPDetailModal paymentId={viewTarget.id} vendorName={vendorMap.get(viewTarget.vendor_id) ?? viewTarget.vendor_id} onClose={() => setViewTarget(null)} />}
     </div>
   );
 }

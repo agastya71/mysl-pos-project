@@ -31,6 +31,7 @@ export default function APListPage() {
   const limit = 20;
   const [showCreate, setShowCreate] = useState(false);
   const [editEntry, setEditEntry] = useState<APInvoice | null>(null);
+  const [filters, setFilters] = useState({ vendor_id: '', status: '', start_date: '', end_date: '' });
 
   useEffect(() => { dispatch(fetchAPEntries({ page, limit })); }, [dispatch, page]);
 
@@ -52,6 +53,40 @@ export default function APListPage() {
       <div style={styles.header}>
         <h1 style={styles.title}>Accounts Payable</h1>
         <button style={styles.addBtn} onClick={() => setShowCreate(true)}>+ New Entry</button>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' as const }}>
+        <select
+          value={filters.vendor_id}
+          onChange={e => { const v = e.target.value; setFilters(f => ({ ...f, vendor_id: v })); dispatch(fetchAPEntries({ vendor_id: v || undefined, page: 1, limit })); }}
+          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }}
+        >
+          <option value="">All Vendors</option>
+          {vendors.map(v => <option key={v.id} value={v.id}>{v.business_name}</option>)}
+        </select>
+        <select
+          value={filters.status}
+          onChange={e => { const v = e.target.value; setFilters(f => ({ ...f, status: v })); dispatch(fetchAPEntries({ status: v || undefined, page: 1, limit })); }}
+          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }}
+        >
+          <option value="">All Statuses</option>
+          <option value="open">Open</option>
+          <option value="partial">Partial</option>
+          <option value="paid">Paid</option>
+          <option value="overdue">Overdue</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="disputed">Disputed</option>
+        </select>
+        <input type="date" value={filters.start_date}
+          onChange={e => { const v = e.target.value; setFilters(f => ({ ...f, start_date: v })); }}
+          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }}
+          placeholder="From date"
+        />
+        <input type="date" value={filters.end_date}
+          onChange={e => { const v = e.target.value; setFilters(f => ({ ...f, end_date: v })); }}
+          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '14px' }}
+          placeholder="To date"
+        />
       </div>
 
       {error && (
