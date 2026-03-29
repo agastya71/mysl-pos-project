@@ -28,6 +28,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'permissions:read',
     'accounts_payable:create', 'accounts_payable:read', 'accounts_payable:update',
     'vendor_payments:create', 'vendor_payments:read', 'vendor_payments:update',
+    'receiving:create', 'receiving:read', 'receiving:update', 'receiving:complete', 'receiving:cancel',
   ],
   admin: [
     'products:create', 'products:update', 'products:delete',
