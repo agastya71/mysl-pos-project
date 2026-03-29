@@ -39,11 +39,10 @@ export default function AccountsPayablePage() {
   const user = useAppSelector((state) => state.auth.user);
   const [modalVendorId, setModalVendorId] = useState<string | null>(null);
 
-  if (user?.role === 'cashier') return <Navigate to="/pos" replace />;
-
   useEffect(() => {
+    if (!user || user.role === 'cashier') return;
     dispatch(fetchAPData());
-  }, [dispatch]);
+  }, [dispatch, user]);
 
   const summaries = useMemo((): APSummary[] => {
     const vendorMap = new Map(vendors.map((v) => [v.id, v.business_name]));
@@ -71,6 +70,8 @@ export default function AccountsPayablePage() {
     [invoices, modalVendorId]
   );
   const modalVendorName = summaries.find((s) => s.vendor_id === modalVendorId)?.vendor_name ?? '';
+
+  if (user?.role === 'cashier') return <Navigate to="/pos" replace />;
 
   return (
     <div style={styles.container}>

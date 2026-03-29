@@ -45,17 +45,18 @@ export default function VendorPaymentsPage() {
   const [approveTarget, setApproveTarget] = useState<VendorPayment | null>(null);
   const [voidTarget, setVoidTarget] = useState<VendorPayment | null>(null);
 
-  if (user?.role === 'cashier') return <Navigate to="/pos" replace />;
-
   useEffect(() => {
+    if (!user || user.role === 'cashier') return;
     dispatch(fetchVendorPayments({ page, limit }));
-  }, [dispatch, page, limit]);
+  }, [dispatch, page, limit, user]);
 
   const vendorMap = useMemo(
     () => new Map(vendors.map((v) => [v.id, v.business_name])),
     [vendors]
   );
   const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  if (user?.role === 'cashier') return <Navigate to="/pos" replace />;
 
   const handleSuccess = () => {
     setApproveTarget(null);
