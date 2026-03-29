@@ -36,7 +36,7 @@ const mockWithDetails = {
 const emptyResult = { invoices: [], total: 0, total_due: 0, overdue_total: 0, page: 1, pages: 1 };
 
 describe('accountsPayable slice (admin-dashboard)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it('has correct initial state', () => {
     const state = makeStore().getState().accountsPayable;

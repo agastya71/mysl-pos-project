@@ -26,7 +26,7 @@ const mockPayment = {
 const emptyResult = { payments: [], total: 0, total_amount: 0, page: 1, pages: 1 };
 
 describe('vendorPayments slice (admin-dashboard)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it('has correct initial state', () => {
     const state = makeStore().getState().vendorPayments;
