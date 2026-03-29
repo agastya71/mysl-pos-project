@@ -18,6 +18,8 @@ import VendorsPage from './pages/VendorsPage';
 import EmployeesPage from './pages/EmployeesPage';
 import EmployeeFormPage from './pages/EmployeeFormPage';
 import RolesPage from './pages/RolesPage';
+import AccountsPayablePage from './pages/AccountsPayablePage';
+import VendorPaymentsPage from './pages/VendorPaymentsPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -162,6 +164,22 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <RolesPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/finance/accounts-payable"
+          element={
+            <PrivateRoute>
+              <AccountsPayablePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/finance/vendor-payments"
+          element={
+            <PrivateRoute>
+              <VendorPaymentsPage />
             </PrivateRoute>
           }
         />
