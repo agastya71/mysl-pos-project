@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import { PoolClient } from 'pg';
 import { pool } from '../config/database';
 import logger from '../utils/logger';
