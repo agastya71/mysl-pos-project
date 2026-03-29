@@ -8,9 +8,11 @@ interface AuthState {
   error: string | null;
 }
 
+const storedUser = localStorage.getItem('adminUser');
+
 const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
+  user: storedUser ? (JSON.parse(storedUser) as LoginResponse['user']) : null,
+  isAuthenticated: !!localStorage.getItem('accessToken'),
   isLoading: false,
   error: null,
 };
@@ -22,6 +24,7 @@ export const login = createAsyncThunk(
       const response = await authService.login(credentials);
       localStorage.setItem('accessToken', response.tokens.accessToken);
       localStorage.setItem('refreshToken', response.tokens.refreshToken);
+      localStorage.setItem('adminUser', JSON.stringify(response.user));
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error?.message || 'Login failed');
@@ -40,6 +43,7 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   }
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
+  localStorage.removeItem('adminUser');
 });
 
 const authSlice = createSlice({
