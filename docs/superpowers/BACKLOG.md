@@ -1,6 +1,6 @@
 # POS Project Backlog
 
-**Last updated:** 2026-03-28
+**Last updated:** 2026-03-29
 **Purpose:** Living document tracking all remaining work. Update when a feature is completed or a new one is identified. Reference this before starting any new task.
 
 ---
@@ -13,6 +13,8 @@
 | #58 | Fix: PO integration test mock setup |
 | #59 | Seed full role-permission matrix (44 permissions across cashier/manager/admin) |
 | #60 | Accounts payable + vendor payments — 14 backend endpoints, 36 integration tests |
+| #61 | AP + VP frontend — Redux slices, API services, pages for pos-client + admin-dashboard |
+| #62 | Inventory Receiving (B1) — 9 endpoints, trigger-based receiving numbers, PO fulfillment sync, 32 tests |
 
 ---
 
@@ -24,7 +26,6 @@ These have zero implementation (no routes, service, or controller):
 
 | ID | Feature | Spec reference | Notes |
 |---|---|---|---|
-| B1 | **Inventory Receiving** | `docs/architecture/API_ENDPOINTS.md` — Receiving Endpoints | List, get, create, update, complete, cancel; add/update/delete line items |
 | B2 | **Donations** | `docs/architecture/API_ENDPOINTS.md` — Donation Endpoints | Create, list, get, update; generate receipt, send receipt, acknowledgment, annual summary |
 | B3 | **Bulk Import** | `docs/architecture/API_ENDPOINTS.md` + `BULK_IMPORT.md` | Import vendor inventory, batches, validate, execute, cancel, error-report, templates |
 | B4 | **Shift Management** | Phase 4C employee plan | Clock-in, clock-out, current shift, list shifts (`/api/v1/shifts`) |
@@ -50,8 +51,6 @@ These have zero implementation (no routes, service, or controller):
 
 | ID | Feature | App | Notes |
 |---|---|---|---|
-| F1 | **Accounts Payable pages** | pos-client + admin-dashboard | No AP page, no VP page, no Redux slice, no API service — entire frontend layer missing |
-| F2 | **Vendor Payments pages** | pos-client + admin-dashboard | Same as F1 — backend done, zero frontend |
 | F3 | Shift management UI | pos-client | `MyShiftPage.tsx`, `ClockInOutButton.tsx`, `ShiftSummary.tsx` — Phase 4C |
 | F4 | Employee detail sub-pages | pos-client | `EmployeeDetailsPage.tsx` with performance + activity tabs |
 | F5 | Gift card management page | pos-client | Backend exists; no `GiftCardsPage.tsx` |
