@@ -15,6 +15,7 @@ import reconciliationRoutes from './reconciliation.routes';
 import paymentsRoutes from './payments.routes';
 import accountsPayableRoutes from './accounts_payable.routes';
 import vendorPaymentsRoutes from './vendor_payments.routes';
+import donationRoutes from './donations.routes';
 
 const router = Router();
 
@@ -34,5 +35,6 @@ router.use('/reconciliation', reconciliationRoutes);
 router.use('/payments', paymentsRoutes);
 router.use('/accounts-payable', accountsPayableRoutes);
 router.use('/vendor-payments', vendorPaymentsRoutes);
+router.use('/donations', donationRoutes);
 
 export default router;

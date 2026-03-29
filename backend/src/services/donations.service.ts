@@ -248,14 +248,16 @@ export async function getDonation(id: string): Promise<any> {
   }
   const donation = donationResult.rows[0];
 
-  let items: any[] = [];
-  if (donation.receiving_id) {
-    const itemsResult = await pool.query(
-      'SELECT * FROM receiving_items WHERE receiving_id = $1 ORDER BY created_at ASC',
-      [donation.receiving_id]
-    );
-    items = itemsResult.rows;
-  }
+  const itemsResult = await pool.query(
+    `SELECT ri.*
+     FROM receiving_items ri
+     JOIN inventory_receiving ir ON ir.id = ri.receiving_id
+     JOIN donations d ON d.receiving_id = ir.id
+     WHERE d.id = $1
+     ORDER BY ri.created_at ASC`,
+    [id]
+  );
+  const items: any[] = itemsResult.rows;
 
   return { ...donation, items };
 }
