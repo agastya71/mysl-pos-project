@@ -13,6 +13,7 @@ import vendorsReducer from './slices/vendors.slice';
 import employeesReducer from './slices/employees.slice';
 import rolesReducer from './slices/roles.slice';
 import accountsPayableReducer from './slices/accountsPayable.slice';
+import vendorPaymentsReducer from './slices/vendorPayments.slice';
 
 export const store = configureStore({
   reducer: {
@@ -30,6 +31,7 @@ export const store = configureStore({
     employees: employeesReducer,
     roles: rolesReducer,
     accountsPayable: accountsPayableReducer,
+    vendorPayments: vendorPaymentsReducer,
   },
 });
 
