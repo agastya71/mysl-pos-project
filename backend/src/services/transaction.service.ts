@@ -990,7 +990,7 @@ export class TransactionService {
         SELECT pr.name AS product_name,
                c.name AS category_name,
                SUM(ti.quantity)::int AS quantity_sold,
-               SUM(ti.total_price) AS total_revenue
+               SUM(ti.line_total) AS total_revenue
         FROM transaction_items ti
         JOIN transactions t ON t.id = ti.transaction_id
         JOIN products pr ON pr.id = ti.product_id
