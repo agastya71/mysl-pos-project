@@ -32,8 +32,9 @@ export const fetchVendorPayments = createAsyncThunk(
   async (query: VPListQuery, { rejectWithValue }) => {
     try {
       return await apiFetchPayments(query);
-    } catch (err: any) {
-      return rejectWithValue(err.message ?? 'Failed to load payments');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } }; message?: string };
+      return rejectWithValue(e.response?.data?.error?.message ?? e.message ?? 'Failed to load payments');
     }
   }
 );
@@ -42,7 +43,10 @@ export const approvePaymentThunk = createAsyncThunk(
   'vendorPayments/approve',
   async (id: string, { rejectWithValue }) => {
     try { return await approvePayment(id); }
-    catch (err: any) { return rejectWithValue(err.message ?? 'Failed to approve'); }
+    catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } }; message?: string };
+      return rejectWithValue(e.response?.data?.error?.message ?? e.message ?? 'Failed to approve');
+    }
   }
 );
 
@@ -50,7 +54,10 @@ export const voidPaymentThunk = createAsyncThunk(
   'vendorPayments/void',
   async ({ id, reason }: { id: string; reason: string }, { rejectWithValue }) => {
     try { return await voidPayment(id, reason); }
-    catch (err: any) { return rejectWithValue(err.message ?? 'Failed to void'); }
+    catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } }; message?: string };
+      return rejectWithValue(e.response?.data?.error?.message ?? e.message ?? 'Failed to void');
+    }
   }
 );
 
@@ -58,7 +65,10 @@ export const createPaymentThunk = createAsyncThunk(
   'vendorPayments/create',
   async (data: CreatePaymentInput, { rejectWithValue }) => {
     try { return await createPayment(data); }
-    catch (err: any) { return rejectWithValue(err.message ?? 'Failed to create payment'); }
+    catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } }; message?: string };
+      return rejectWithValue(e.response?.data?.error?.message ?? e.message ?? 'Failed to create payment');
+    }
   }
 );
 

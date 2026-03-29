@@ -24,8 +24,9 @@ const METHODS = ['check', 'ach', 'wire', 'credit_card', 'cash', 'other'] as cons
 
 export default function VPCreateModal({ onClose, onSuccess }: Props) {
   const dispatch = useDispatch<AppDispatch>();
-  const { actionLoading, error } = useSelector((s: RootState) => s.vendorPayments);
+  const { actionLoading } = useSelector((s: RootState) => s.vendorPayments);
   const vendors = useSelector((s: RootState) => s.accountsPayable.vendors);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     vendor_id: '',
@@ -39,6 +40,7 @@ export default function VPCreateModal({ onClose, onSuccess }: Props) {
 
   const handleCreate = async () => {
     if (!form.vendor_id) return;
+    setLocalError(null);
     const result = await dispatch(createPaymentThunk({
       vendor_id: form.vendor_id,
       payment_date: form.payment_date,
@@ -47,14 +49,18 @@ export default function VPCreateModal({ onClose, onSuccess }: Props) {
       memo: form.memo || undefined,
       invoice_allocations: [],
     }));
-    if (createPaymentThunk.fulfilled.match(result)) { onSuccess(); }
+    if (createPaymentThunk.fulfilled.match(result)) {
+      onSuccess();
+    } else {
+      setLocalError((result.payload as string) ?? 'Create failed');
+    }
   };
 
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <h2 style={styles.title}>New Vendor Payment</h2>
-        {error && <div style={styles.error}>{error}</div>}
+        {localError && <div style={styles.error}>{localError}</div>}
         <div style={styles.grid}>
           <div style={{ ...styles.field, ...styles.fullWidth }}>
             <label style={styles.label}>Vendor *</label>
