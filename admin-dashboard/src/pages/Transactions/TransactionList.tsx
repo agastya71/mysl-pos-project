@@ -77,8 +77,12 @@ export const TransactionList: React.FC = () => {
       if (filters.paymentMethod) params.set('paymentMethod', filters.paymentMethod);
 
       const res = await apiClient.get(`/transactions?${params.toString()}`);
-      setTransactions(res.data.data || []);
-      if (res.data.meta) setMeta(res.data.meta);
+      const payload = res.data.data;
+      setTransactions(payload.transactions || []);
+      if (payload.pagination) {
+        const p = payload.pagination;
+        setMeta({ page: p.page, limit: p.limit, total: p.total, totalPages: p.total_pages });
+      }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to load transactions');
     } finally {
