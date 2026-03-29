@@ -15,7 +15,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:webpack\" \"npm run dev:electron\"",
     "dev:webpack": "webpack serve --mode development",
-    "dev:electron": "wait-on http://localhost:3001 && electron .",
+    "dev:electron": "wait-on http://localhost:3001 && NODE_ENV=development electron .",
     "build": "webpack --mode production && tsc -p tsconfig.electron.json",
     "build:mac": "npm run icons && npm run build && electron-builder --mac",
     "build:win": "npm run icons && npm run build && electron-builder --win",
