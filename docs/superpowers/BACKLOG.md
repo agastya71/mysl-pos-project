@@ -1,6 +1,6 @@
 # POS Project Backlog
 
-**Last updated:** 2026-03-29
+**Last updated:** 2026-03-29 (B2 complete)
 **Purpose:** Living document tracking all remaining work. Update when a feature is completed or a new one is identified. Reference this before starting any new task.
 
 ---
@@ -15,6 +15,7 @@
 | #60 | Accounts payable + vendor payments — 14 backend endpoints, 36 integration tests |
 | #61 | AP + VP frontend — Redux slices, API services, pages for pos-client + admin-dashboard |
 | #62 | Inventory Receiving (B1) — 9 endpoints, trigger-based receiving numbers, PO fulfillment sync, 32 tests |
+| #63 | Donations (B2) — 9 endpoints, trigger-based donation numbers, receipt/acknowledgment workflows, 20 tests |
 
 ---
 
@@ -26,7 +27,6 @@ These have zero implementation (no routes, service, or controller):
 
 | ID | Feature | Spec reference | Notes |
 |---|---|---|---|
-| B2 | **Donations** | `docs/architecture/API_ENDPOINTS.md` — Donation Endpoints | Create, list, get, update; generate receipt, send receipt, acknowledgment, annual summary |
 | B3 | **Bulk Import** | `docs/architecture/API_ENDPOINTS.md` + `BULK_IMPORT.md` | Import vendor inventory, batches, validate, execute, cancel, error-report, templates |
 | B4 | **Shift Management** | Phase 4C employee plan | Clock-in, clock-out, current shift, list shifts (`/api/v1/shifts`) |
 
@@ -67,7 +67,6 @@ These were intentionally deferred in specs; do not start without a new design se
 |---|---|---|
 | D1 | `GET /vendor-payments/:id/print-check` — PDF check printing | `2026-03-28-accounts-payable-design.md` |
 | D2 | Phase 3E — Physical inventory counts UI | Phase 3 progress doc ("optional, can be deferred") |
-| D3 | Donations system | Not yet specced |
 | D4 | Mobile count app | `UI_UX_DESIGN.md` |
 
 ---
