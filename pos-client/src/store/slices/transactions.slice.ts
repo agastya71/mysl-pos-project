@@ -343,7 +343,8 @@ const transactionsSlice = createSlice({
     builder.addCase(fetchTransactions.fulfilled, (state, action) => {
       state.isLoading = false;
       state.items = action.payload.transactions;
-      state.pagination = action.payload.pagination;
+      const p = action.payload.pagination;
+      state.pagination = { page: p.page, limit: p.limit, total: p.total, totalPages: p.total_pages };
     });
     // FetchTransactions: rejected - set error state
     builder.addCase(fetchTransactions.rejected, (state, action) => {
