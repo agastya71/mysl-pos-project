@@ -110,6 +110,7 @@ export interface LoginResponse {
     username: string;
     full_name: string;
     role: string;
+    status: 'active' | 'inactive';
     assigned_terminal_id?: string;
   };
   tokens: {

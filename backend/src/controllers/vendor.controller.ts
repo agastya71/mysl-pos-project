@@ -593,8 +593,7 @@ export async function createVendor(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         success: false,
-        error: 'Validation error',
-        details: error.errors,
+        error: { code: 'VALIDATION_ERROR', message: 'Validation error', details: error.errors },
       });
     }
 
@@ -799,8 +798,7 @@ export async function updateVendor(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         success: false,
-        error: 'Validation error',
-        details: error.errors,
+        error: { code: 'VALIDATION_ERROR', message: 'Validation error', details: error.errors },
       });
     }
 

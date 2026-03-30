@@ -48,7 +48,6 @@ export interface PurchaseOrder {
   // Payment tracking
   payment_terms: string | null;
   payment_status: 'unpaid' | 'partial' | 'paid' | 'donation' | 'na' | null;
-  amount_paid: number;
 
   // Workflow tracking
   created_by: string;

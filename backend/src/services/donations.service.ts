@@ -240,7 +240,7 @@ export async function listDonations(query: ListDonationsQuery): Promise<any> {
     donations: dataResult.rows,
     total,
     page,
-    pages: Math.ceil(total / limit) || 1,
+    totalPages: Math.ceil(total / limit) || 1,
   };
 }
 
