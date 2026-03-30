@@ -108,12 +108,21 @@ export async function createDonation(userId: string, data: CreateDonationInput):
     // If items provided: create linked receiving, insert items, complete receiving
     if (data.items && data.items.length > 0) {
       // 1. Create inventory_receiving of type 'donation'
+      // Generate receiving_number (no DB trigger exists for this table)
+      const rcvSeqResult = await client.query(
+        `SELECT COUNT(*) + 1 AS next_seq FROM inventory_receiving
+         WHERE EXTRACT(year FROM created_at) = $1 FOR UPDATE`,
+        [new Date().getFullYear()]
+      );
+      const rcvSeq = parseInt(rcvSeqResult.rows[0].next_seq, 10);
+      const receivingNumber = `RCV-${new Date().getFullYear()}-${rcvSeq.toString().padStart(4, '0')}`;
+
       const receivingResult = await client.query(
         `INSERT INTO inventory_receiving
-           (vendor_id, receiving_type, received_by, is_donation)
-         VALUES ($1, 'donation', $2, true)
+           (receiving_number, vendor_id, receiving_type, received_by, is_donation)
+         VALUES ($1, $2, 'donation', $3, true)
          RETURNING *`,
-        [data.vendor_id, userId]
+        [receivingNumber, data.vendor_id, userId]
       );
       const receiving = receivingResult.rows[0];
 
@@ -167,7 +176,7 @@ export async function createDonation(userId: string, data: CreateDonationInput):
           await client.query(
             `INSERT INTO inventory_adjustments
                (product_id, adjustment_type, quantity_change, old_quantity, new_quantity, reason, adjusted_by)
-             VALUES ($1, 'receiving', $2, $3, $4, $5, $6)`,
+             VALUES ($1, 'initial', $2, $3, $4, $5, $6)`,
             [item.product_id, item.quantity_received, oldQty, newQty, `Donation: ${donation.donation_number}`, userId]
           );
         }
