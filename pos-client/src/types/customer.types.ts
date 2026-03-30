@@ -260,7 +260,7 @@ export interface CustomerSearchResult {
   customer_number: string;
   first_name: string;
   last_name: string;
-  full_name: string; // Combined first + last name
+  full_name?: string; // Not returned by API; constructed client-side from first_name + last_name
   phone: string | null;
   email: string | null;
 }

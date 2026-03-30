@@ -160,11 +160,12 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({ selectedCustomerId,
 
   /** Handle customer selection from dropdown - sets selected, clears search, calls onSelect */
   const handleSelectCustomer = (customer: CustomerSearchResult) => {
-    setSelectedCustomer(customer);
+    const withFullName = { ...customer, full_name: `${customer.first_name} ${customer.last_name}` };
+    setSelectedCustomer(withFullName);
     setSearchQuery('');
     setIsDropdownOpen(false);
     dispatch(clearSearchResults());
-    onSelect(customer);
+    onSelect(withFullName);
   };
 
   /** Handle clearing selected customer - resets state, calls onSelect(null) */
@@ -358,7 +359,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({ selectedCustomerId,
                       }}
                     >
                       <div style={styles.dropdownItemName}>
-                        {customer.full_name} ({customer.customer_number})
+                        {customer.first_name} {customer.last_name} ({customer.customer_number})
                       </div>
                       <div style={styles.dropdownItemDetails}>
                         {customer.email || customer.phone || 'No contact info'}

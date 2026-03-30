@@ -110,7 +110,7 @@ export default function VPListPage() {
                 <tr key={p.id}>
                   <td style={styles.td}>{p.payment_number}</td>
                   <td style={styles.td}>{vendorMap.get(p.vendor_id) ?? p.vendor_id}</td>
-                  <td style={styles.td}>${parseFloat(p.total_amount).toFixed(2)}</td>
+                  <td style={styles.td}>${parseFloat(p.payment_amount).toFixed(2)}</td>
                   <td style={styles.td}>{p.payment_method.toUpperCase()}</td>
                   <td style={styles.td}>
                     <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', color: '#fff', background: statusColors[p.status] }}>

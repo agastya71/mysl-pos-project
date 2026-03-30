@@ -44,11 +44,11 @@ export default function VPDetailModal({ paymentId, vendorName, onClose }: Props)
 
             <div style={styles.section}>
               <div style={styles.row}><span style={styles.label}>Status</span><span>{payment.status}</span></div>
-              <div style={styles.row}><span style={styles.label}>Amount</span><span>${parseFloat(payment.total_amount).toFixed(2)}</span></div>
+              <div style={styles.row}><span style={styles.label}>Amount</span><span>${parseFloat(payment.payment_amount).toFixed(2)}</span></div>
               <div style={styles.row}><span style={styles.label}>Method</span><span>{payment.payment_method.toUpperCase()}</span></div>
               <div style={styles.row}><span style={styles.label}>Date</span><span>{payment.payment_date}</span></div>
-              {payment.reference_number && <div style={styles.row}><span style={styles.label}>Reference #</span><span>{payment.reference_number}</span></div>}
-              {payment.memo && <div style={styles.row}><span style={styles.label}>Memo</span><span>{payment.memo}</span></div>}
+              {payment.transaction_reference && <div style={styles.row}><span style={styles.label}>Reference #</span><span>{payment.transaction_reference}</span></div>}
+              {payment.notes && <div style={styles.row}><span style={styles.label}>Memo</span><span>{payment.notes}</span></div>}
               {payment.approved_by && <div style={styles.row}><span style={styles.label}>Approved by</span><span>{payment.approved_by}</span></div>}
             </div>
 

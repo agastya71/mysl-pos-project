@@ -4,23 +4,21 @@ export interface VendorPayment {
   vendor_id: string;
   payment_date: string;
   payment_method: 'check' | 'ach' | 'wire' | 'credit_card' | 'cash' | 'other';
-  reference_number: string | null;
-  total_amount: string;
+  transaction_reference: string | null;
+  payment_amount: string;
   status: 'pending' | 'cleared' | 'void' | 'cancelled';
-  memo: string | null;
+  notes: string | null;
   approved_by: string | null;
-  approved_at: string | null;
-  created_by: string | null;
+  processed_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface PaymentAllocation {
   id: string;
-  payment_id: string;
-  ap_invoice_id: string;
+  vendor_payment_id: string;
+  accounts_payable_id: string;
   allocated_amount: string;
-  discount_taken: string;
   created_at: string;
 }
 
@@ -28,11 +26,10 @@ export interface VendorPaymentWithAllocations extends VendorPayment {
   vendor: { id: string; vendor_number: string; business_name: string };
   allocations: Array<{
     id: string;
-    ap_invoice_id: string;
+    accounts_payable_id: string;
     ap_number: string;
     invoice_number: string | null;
     allocated_amount: string;
-    discount_taken: string;
   }>;
 }
 
