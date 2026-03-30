@@ -18,7 +18,7 @@ export type POStatus =
 /**
  * Order type classification
  */
-export type POOrderType = 'purchase' | 'donation' | 'consignment';
+export type POOrderType = 'purchase' | 'donation' | 'consignment' | 'transfer';
 
 /**
  * Main purchase order entity
@@ -47,8 +47,7 @@ export interface PurchaseOrder {
 
   // Payment tracking
   payment_terms: string | null;
-  payment_status: 'pending' | 'partial' | 'paid' | null;
-  amount_paid: number;
+  payment_status: 'unpaid' | 'partial' | 'paid' | 'donation' | 'na' | null;
 
   // Workflow tracking
   created_by: string;

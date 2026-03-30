@@ -5,10 +5,10 @@ import { RootState } from '../../store';
 
 interface TransactionItem {
   id: string;
-  product_name: string;
+  product_snapshot: { name: string; sku?: string };
   quantity: number;
   unit_price: number;
-  total_price: number;
+  line_total: number;
 }
 
 interface Payment {
@@ -16,18 +16,16 @@ interface Payment {
   payment_method: string;
   amount: number;
   status: string;
-  card_last_four?: string;
-  card_type?: string;
+  details?: { card_last_four?: string; card_type?: string };
 }
 
 interface Transaction {
   id: string;
   transaction_number: string;
-  created_at: string;
+  transaction_date: string;
   cashier_name: string;
   total_amount: number;
   status: string;
-  payment_methods: string[];
   items?: TransactionItem[];
   payments?: Payment[];
 }
@@ -72,9 +70,9 @@ export const TransactionList: React.FC = () => {
     try {
       const params = new URLSearchParams({ page: String(page), limit: '20' });
       if (filters.status) params.set('status', filters.status);
-      if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
-      if (filters.dateTo) params.set('dateTo', filters.dateTo);
-      if (filters.paymentMethod) params.set('paymentMethod', filters.paymentMethod);
+      if (filters.dateFrom) params.set('start_date', filters.dateFrom);
+      if (filters.dateTo) params.set('end_date', filters.dateTo);
+      if (filters.paymentMethod) params.set('payment_method', filters.paymentMethod);
 
       const res = await apiClient.get(`/transactions?${params.toString()}`);
       const payload = res.data.data;
@@ -207,10 +205,10 @@ export const TransactionList: React.FC = () => {
             {!loading && transactions.map((txn) => (
               <tr key={txn.id} style={s.tr}>
                 <td style={s.td}><code>{txn.transaction_number}</code></td>
-                <td style={s.td}>{new Date(txn.created_at).toLocaleString()}</td>
+                <td style={s.td}>{new Date(txn.transaction_date).toLocaleString()}</td>
                 <td style={s.td}>{txn.cashier_name}</td>
                 <td style={s.td}>${Number(txn.total_amount).toFixed(2)}</td>
-                <td style={s.td}>{(txn.payment_methods || []).join(', ') || '—'}</td>
+                <td style={s.td}>{(txn.payments || []).map((p) => p.payment_method.replace('_', ' ')).join(', ') || '—'}</td>
                 <td style={s.td}>
                   <span style={{ ...s.badge, color: statusColor(txn.status), borderColor: statusColor(txn.status) }}>
                     {txn.status.replace('_', ' ')}
@@ -250,7 +248,7 @@ export const TransactionList: React.FC = () => {
               <>
                 <div style={s.detailMeta}>
                   <span><strong>#{detail.transaction_number}</strong></span>
-                  <span>{new Date(detail.created_at).toLocaleString()}</span>
+                  <span>{new Date(detail.transaction_date).toLocaleString()}</span>
                   <span>Cashier: {detail.cashier_name}</span>
                   <span style={{ color: statusColor(detail.status) }}>{detail.status.replace('_', ' ')}</span>
                 </div>
@@ -268,10 +266,10 @@ export const TransactionList: React.FC = () => {
                   <tbody>
                     {(detail.items || []).map((item) => (
                       <tr key={item.id} style={s.tr}>
-                        <td style={s.td}>{item.product_name}</td>
+                        <td style={s.td}>{item.product_snapshot?.name}</td>
                         <td style={s.td}>{item.quantity}</td>
                         <td style={s.td}>${Number(item.unit_price).toFixed(2)}</td>
-                        <td style={s.td}>${Number(item.total_price).toFixed(2)}</td>
+                        <td style={s.td}>${Number(item.line_total).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -293,7 +291,7 @@ export const TransactionList: React.FC = () => {
                         <td style={s.td}>{p.payment_method.replace('_', ' ')}</td>
                         <td style={s.td}>${Number(p.amount).toFixed(2)}</td>
                         <td style={s.td}>{p.status}</td>
-                        <td style={s.td}>{p.card_last_four ? `${p.card_type} ···${p.card_last_four}` : '—'}</td>
+                        <td style={s.td}>{p.details?.card_last_four ? `${p.details.card_type} ···${p.details.card_last_four}` : '—'}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -21,7 +21,7 @@ export interface RefundResult {
   amount: number;
   reason: string;
   status: string;
-  refunded_at: string;
+  refund_date: string;
 }
 
 export class RefundService {
@@ -101,8 +101,8 @@ export class RefundService {
       // 4. Insert refund record
       const refundResult = await client.query(
         `INSERT INTO refunds (
-          transaction_id, refunded_by, amount, reason, status, refunded_at
-        ) VALUES ($1, $2, $3, $4, $5, NOW())
+          original_transaction_id, refunded_by, refund_amount, refund_reason, status
+        ) VALUES ($1, $2, $3, $4, $5)
         RETURNING *`,
         [transactionId, userId, refundAmount, reason, 'completed']
       );
@@ -149,7 +149,7 @@ export class RefundService {
         amount: refundAmount,
         reason,
         status: 'completed',
-        refunded_at: refund.refunded_at,
+        refund_date: refund.refund_date,
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -168,8 +168,8 @@ export class RefundService {
       `SELECT r.*, u.username as refunded_by_name
        FROM refunds r
        LEFT JOIN users u ON u.id = r.refunded_by
-       WHERE r.transaction_id = $1
-       ORDER BY r.refunded_at DESC`,
+       WHERE r.original_transaction_id = $1
+       ORDER BY r.refund_date DESC`,
       [transactionId]
     );
     return result.rows;

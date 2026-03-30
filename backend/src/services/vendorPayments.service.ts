@@ -49,8 +49,8 @@ async function createPaymentWithClient(
   // Insert payment record
   const paymentResult = await client.query(
     `INSERT INTO vendor_payments
-       (vendor_id, payment_number, payment_date, payment_method, reference_number,
-        total_amount, status, memo, created_by)
+       (vendor_id, payment_number, payment_date, payment_method, transaction_reference,
+        payment_amount, status, notes, processed_by)
      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8)
      RETURNING *`,
     [
@@ -94,13 +94,12 @@ async function createPaymentWithClient(
     // Insert allocation
     await client.query(
       `INSERT INTO payment_allocations
-         (payment_id, ap_invoice_id, allocated_amount, discount_taken)
-       VALUES ($1, $2, $3, $4)`,
+         (vendor_payment_id, accounts_payable_id, allocated_amount)
+       VALUES ($1, $2, $3)`,
       [
         payment.id,
         alloc.ap_invoice_id,
         alloc.allocated_amount,
-        alloc.discount_taken ?? 0,
       ]
     );
 
@@ -175,7 +174,7 @@ export async function approvePayment(
 
   const updateResult = await pool.query(
     `UPDATE vendor_payments
-     SET status = 'cleared', approved_by = $1, approved_at = NOW(), updated_at = NOW()
+     SET status = 'cleared', approved_by = $1, updated_at = NOW()
      WHERE id = $2
      RETURNING *`,
     [userId, paymentId]
@@ -202,14 +201,14 @@ export async function voidPayment(paymentId: string): Promise<VendorPayment> {
 
     // Fetch allocations to reverse
     const allocResult = await client.query(
-      'SELECT ap_invoice_id, allocated_amount FROM payment_allocations WHERE payment_id = $1',
+      'SELECT accounts_payable_id, allocated_amount FROM payment_allocations WHERE vendor_payment_id = $1',
       [paymentId]
     );
 
     let totalReversed = 0;
     for (const alloc of allocResult.rows) {
       const amount = parseFloat(alloc.allocated_amount);
-      await updateAPBalance(client, alloc.ap_invoice_id, -amount);
+      await updateAPBalance(client, alloc.accounts_payable_id, -amount);
       totalReversed += amount;
     }
 
@@ -273,7 +272,7 @@ export async function listPayments(query: VPListQuery): Promise<VPListResult> {
   );
 
   const totalAmount = dataResult.rows.reduce(
-    (sum: number, p: any) => sum + parseFloat(p.total_amount || '0'),
+    (sum: number, p: any) => sum + parseFloat(p.payment_amount || '0'),
     0
   );
 
@@ -292,15 +291,14 @@ export async function getPayment(paymentId: string): Promise<VendorPaymentWithAl
        vp.*,
        v.vendor_number, v.business_name,
        pa.id AS alloc_id,
-       pa.ap_invoice_id,
+       pa.accounts_payable_id,
        ap.ap_number,
        ap.invoice_number,
-       pa.allocated_amount,
-       pa.discount_taken
+       pa.allocated_amount
      FROM vendor_payments vp
      JOIN vendors v ON v.id = vp.vendor_id
-     LEFT JOIN payment_allocations pa ON pa.payment_id = vp.id
-     LEFT JOIN accounts_payable ap ON ap.id = pa.ap_invoice_id
+     LEFT JOIN payment_allocations pa ON pa.vendor_payment_id = vp.id
+     LEFT JOIN accounts_payable ap ON ap.id = pa.accounts_payable_id
      WHERE vp.id = $1`,
     [paymentId]
   );
@@ -316,13 +314,12 @@ export async function getPayment(paymentId: string): Promise<VendorPaymentWithAl
     vendor_id: first.vendor_id,
     payment_date: first.payment_date,
     payment_method: first.payment_method,
-    reference_number: first.reference_number,
-    total_amount: first.total_amount,
+    transaction_reference: first.transaction_reference,
+    payment_amount: first.payment_amount,
     status: first.status,
-    memo: first.memo,
+    notes: first.notes,
     approved_by: first.approved_by,
-    approved_at: first.approved_at,
-    created_by: first.created_by,
+    processed_by: first.processed_by,
     created_at: first.created_at,
     updated_at: first.updated_at,
     vendor: {
@@ -334,11 +331,10 @@ export async function getPayment(paymentId: string): Promise<VendorPaymentWithAl
       .filter((r: any) => r.alloc_id !== null)
       .map((r: any) => ({
         id: r.alloc_id,
-        ap_invoice_id: r.ap_invoice_id,
+        accounts_payable_id: r.accounts_payable_id,
         ap_number: r.ap_number,
         invoice_number: r.invoice_number,
         allocated_amount: r.allocated_amount,
-        discount_taken: r.discount_taken,
       })),
   };
 
@@ -363,8 +359,8 @@ export async function updatePayment(
 
   if (data.payment_date !== undefined) { setClauses.push(`payment_date = $${i++}`); params.push(data.payment_date); }
   if (data.payment_method !== undefined) { setClauses.push(`payment_method = $${i++}`); params.push(data.payment_method); }
-  if (data.reference_number !== undefined) { setClauses.push(`reference_number = $${i++}`); params.push(data.reference_number); }
-  if (data.memo !== undefined) { setClauses.push(`memo = $${i++}`); params.push(data.memo); }
+  if (data.reference_number !== undefined) { setClauses.push(`transaction_reference = $${i++}`); params.push(data.reference_number); }
+  if (data.memo !== undefined) { setClauses.push(`notes = $${i++}`); params.push(data.memo); }
 
   setClauses.push(`updated_at = NOW()`);
   params.push(paymentId);

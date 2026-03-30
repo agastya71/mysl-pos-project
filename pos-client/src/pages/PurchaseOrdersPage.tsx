@@ -351,9 +351,10 @@ const PurchaseOrdersPage: React.FC = () => {
               }}
             >
               <option value="">All Types</option>
-              <option value="standard">Standard</option>
-              <option value="urgent">Urgent</option>
-              <option value="drop_ship">Drop Ship</option>
+              <option value="purchase">Purchase</option>
+              <option value="donation">Donation</option>
+              <option value="consignment">Consignment</option>
+              <option value="transfer">Transfer</option>
             </select>
           </div>
 

@@ -967,12 +967,12 @@ export class TransactionService {
     const [summaryResult, breakdownResult, topProductsResult] = await Promise.all([
       pool.query(`
         SELECT
-          COALESCE(SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN total_amount ELSE 0 END), 0) AS today,
-          COALESCE(COUNT(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 END)::int, 0) AS today_count,
-          COALESCE(SUM(CASE WHEN created_at >= DATE_TRUNC('week', NOW()) THEN total_amount ELSE 0 END), 0) AS this_week,
-          COALESCE(COUNT(CASE WHEN created_at >= DATE_TRUNC('week', NOW()) THEN 1 END)::int, 0) AS this_week_count,
-          COALESCE(SUM(CASE WHEN created_at >= DATE_TRUNC('month', NOW()) THEN total_amount ELSE 0 END), 0) AS this_month,
-          COALESCE(COUNT(CASE WHEN created_at >= DATE_TRUNC('month', NOW()) THEN 1 END)::int, 0) AS this_month_count
+          COALESCE(SUM(CASE WHEN DATE(transaction_date) = CURRENT_DATE THEN total_amount ELSE 0 END), 0) AS today,
+          COALESCE(COUNT(CASE WHEN DATE(transaction_date) = CURRENT_DATE THEN 1 END)::int, 0) AS today_count,
+          COALESCE(SUM(CASE WHEN transaction_date >= DATE_TRUNC('week', NOW()) THEN total_amount ELSE 0 END), 0) AS this_week,
+          COALESCE(COUNT(CASE WHEN transaction_date >= DATE_TRUNC('week', NOW()) THEN 1 END)::int, 0) AS this_week_count,
+          COALESCE(SUM(CASE WHEN transaction_date >= DATE_TRUNC('month', NOW()) THEN total_amount ELSE 0 END), 0) AS this_month,
+          COALESCE(COUNT(CASE WHEN transaction_date >= DATE_TRUNC('month', NOW()) THEN 1 END)::int, 0) AS this_month_count
         FROM transactions WHERE status = 'completed'
       `),
       pool.query(`
@@ -982,7 +982,7 @@ export class TransactionService {
         FROM payments p
         JOIN transactions t ON t.id = p.transaction_id
         WHERE t.status = 'completed'
-          AND t.created_at >= DATE_TRUNC('month', NOW())
+          AND t.transaction_date >= DATE_TRUNC('month', NOW())
         GROUP BY p.payment_method
         ORDER BY total_amount DESC
       `),
@@ -996,7 +996,7 @@ export class TransactionService {
         JOIN products pr ON pr.id = ti.product_id
         LEFT JOIN categories c ON c.id = pr.category_id
         WHERE t.status = 'completed'
-          AND t.created_at >= DATE_TRUNC('month', NOW())
+          AND t.transaction_date >= DATE_TRUNC('month', NOW())
         GROUP BY pr.id, pr.name, c.name
         ORDER BY total_revenue DESC
         LIMIT 10

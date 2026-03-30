@@ -128,7 +128,7 @@ import { z } from 'zod';
  * }
  */
 const CreateVendorSchema = z.object({
-  vendor_type: z.enum(['supplier', 'distributor', 'manufacturer']),
+  vendor_type: z.enum(['supplier', 'consignment', 'individual_donor', 'corporate_donor', 'thrift_partner']),
   business_name: z.string().min(1).max(200),
   contact_person: z.string().max(100).optional(),
   email: z.string().email().optional(),
@@ -137,9 +137,9 @@ const CreateVendorSchema = z.object({
   address_line2: z.string().max(200).optional(),
   city: z.string().max(100).optional(),
   state: z.string().max(50).optional(),
-  postal_code: z.string().max(20).optional(),
+  zip_code: z.string().max(20).optional(),
   country: z.string().max(50).default('USA'),
-  payment_terms: z.string().max(50).optional(),
+  payment_terms: z.enum(['net_15', 'net_30', 'net_60', 'net_90', 'cod', 'prepaid', 'donation', 'consignment']).optional(),
   tax_id: z.string().max(50).optional(),
   notes: z.string().optional(),
 });
@@ -559,7 +559,7 @@ export async function createVendor(req: Request, res: Response) {
     const result = await pool.query(
       `INSERT INTO vendors (
         vendor_type, business_name, contact_person, email, phone,
-        address_line1, address_line2, city, state, postal_code, country,
+        address_line1, address_line2, city, state, zip_code, country,
         payment_terms, tax_id, notes, is_active
       ) VALUES (
         $1, $2, $3, $4, $5,
@@ -576,7 +576,7 @@ export async function createVendor(req: Request, res: Response) {
         validatedData.address_line2 || null,
         validatedData.city || null,
         validatedData.state || null,
-        validatedData.postal_code || null,
+        validatedData.zip_code || null,
         validatedData.country || 'USA',
         validatedData.payment_terms || null,
         validatedData.tax_id || null,
@@ -593,8 +593,7 @@ export async function createVendor(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         success: false,
-        error: 'Validation error',
-        details: error.errors,
+        error: { code: 'VALIDATION_ERROR', message: 'Validation error', details: error.errors },
       });
     }
 
@@ -799,8 +798,7 @@ export async function updateVendor(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         success: false,
-        error: 'Validation error',
-        details: error.errors,
+        error: { code: 'VALIDATION_ERROR', message: 'Validation error', details: error.errors },
       });
     }
 

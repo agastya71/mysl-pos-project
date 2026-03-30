@@ -522,15 +522,12 @@ export const updateCategory = async (
 ): Promise<void> => {
   try {
     const validatedData = updateCategorySchema.parse(req.body);
-    const category = await categoryService.updateCategory(req.params.id, validatedData);
+    await categoryService.updateCategory(req.params.id, validatedData);
+    const updated = await categoryService.getCategoryById(req.params.id);
 
     res.json({
       success: true,
-      data: {
-        ...category,
-        children: [],
-        product_count: 0,
-      },
+      data: updated,
     });
   } catch (error) {
     next(error);
@@ -618,7 +615,7 @@ export const deleteCategory = async (
 
     res.json({
       success: true,
-      message: 'Category deleted successfully',
+      data: { message: 'Category deleted successfully' },
     });
   } catch (error) {
     next(error);

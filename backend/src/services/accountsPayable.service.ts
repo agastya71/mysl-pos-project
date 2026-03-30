@@ -147,8 +147,8 @@ export async function getInvoice(id: string): Promise<APInvoiceWithDetails> {
      FROM accounts_payable ap
      JOIN vendors v ON v.id = ap.vendor_id
      LEFT JOIN purchase_orders po ON po.id = ap.purchase_order_id
-     LEFT JOIN payment_allocations pa ON pa.ap_invoice_id = ap.id
-     LEFT JOIN vendor_payments vp ON vp.id = pa.payment_id
+     LEFT JOIN payment_allocations pa ON pa.accounts_payable_id = ap.id
+     LEFT JOIN vendor_payments vp ON vp.id = pa.vendor_payment_id
      WHERE ap.id = $1`,
     [id]
   );
